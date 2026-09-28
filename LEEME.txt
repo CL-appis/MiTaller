@@ -1,0 +1,44 @@
+MI TALLER — Paquete para instalar como app (APK)
+==================================================
+
+Esta carpeta tiene todo lo necesario para que "Mi Taller" se pueda
+instalar en un celular Android como una app de verdad (con su ícono,
+pantalla completa, y funcionando sin internet).
+
+Son 5 archivos: index.html, manifest.json, service-worker.js,
+icon-192.png, icon-512.png, icon-maskable-512.png.
+
+PASO 1 — Subir la carpeta a un hosting gratis (sin necesitar saber programar)
+------------------------------------------------------------------
+1. Andá a https://app.netlify.com/drop
+2. Arrastrá esta carpeta completa (o los 6 archivos juntos) a la zona
+   que dice "Drag and drop your site output folder here".
+3. En unos segundos te da un link tipo https://algo-al-azar.netlify.app
+   Ese es el link de tu app ya online. Guardalo.
+   (Podés crear una cuenta gratis después si querés un nombre más lindo
+   y que el link no se pierda nunca — no hace falta para este paso).
+
+PASO 2 — Generar el APK con ese link
+------------------------------------------------------------------
+1. Andá a https://www.pwabuilder.com
+2. Pegá el link que te dio Netlify y tocá "Start".
+3. Esperá a que analice la app (unos segundos).
+4. Elegí "Android" y descargá el paquete.
+5. Te va a dar un archivo .apk (o un .aab, elegí la opción APK).
+
+PASO 3 — Instalar el APK en tu celular
+------------------------------------------------------------------
+1. Pasate el .apk al celular (por mail, Drive, WhatsApp a vos mismo, etc.)
+2. Al abrirlo, Android va a pedir permiso para "instalar apps de
+   fuentes desconocidas" — es normal, aceptalo solo para este archivo.
+3. Instalar, abrir, listo: te va a aparecer el ícono de Mi Taller en
+   el celular como cualquier otra app.
+
+IMPORTANTE sobre los datos
+------------------------------------------------------------------
+Los datos (productos, stock, ventas) se guardan en el navegador/app
+donde los cargués. Si cargás datos en la versión del link de Claude
+(el artifact) y después instalás el APK, son "instalaciones" distintas
+y NO comparten datos automáticamente. Te recomiendo: una vez que
+tengas el APK anda, cargá tus datos reales ahí y usá esa como la
+principal de acá en adelante.
