@@ -106,15 +106,17 @@ products:[
  mkProd('p1','Snoopy','c1','🐶',10),
  mkProd('p2','Bobbie Goods','c1','🎨',10),
  mkProd('p3','Van Gogh','c1','🖼️',2)],
-insumos:[{id:'i1',nombre:'Papel 90g (hoja)',costo:30,stock:3000},{id:'i2',nombre:'Papel 120g (hoja)',costo:45,stock:500}],
+insumoCategorias:[{id:'ic1',nombre:'General'}],
+insumos:[{id:'i1',categoriaId:'ic1',nombre:'Papel 90g (hoja)',costo:30,stock:3000},{id:'i2',categoriaId:'ic1',nombre:'Papel 120g (hoja)',costo:45,stock:500}],
 equipos:[],
-pasosCatalogo:[{id:'pc1',name:'Imprimir portadas',unit:'lote',loteSize:9999,estMin:20},{id:'pc2',name:'Laminar portadas',unit:'lote',loteSize:10,estMin:15},{id:'pc3',name:'Imprimir interiores',unit:'lote',loteSize:9999,estMin:20},{id:'pc4',name:'Armar y anillar',unit:'unidad',loteSize:1,estMin:8},{id:'pc5',name:'Control y packaging',unit:'unidad',loteSize:1,estMin:4}],
+pasoCategorias:[{id:'pcat1',nombre:'General'}],
+pasosCatalogo:[{id:'pc1',categoriaId:'pcat1',name:'Imprimir portadas',unit:'lote',loteSize:9999,estMin:20},{id:'pc2',categoriaId:'pcat1',name:'Laminar portadas',unit:'lote',loteSize:10,estMin:15},{id:'pc3',categoriaId:'pcat1',name:'Imprimir interiores',unit:'lote',loteSize:9999,estMin:20},{id:'pc4',categoriaId:'pcat1',name:'Armar y anillar',unit:'unidad',loteSize:1,estMin:8},{id:'pc5',categoriaId:'pcat1',name:'Control y packaging',unit:'unidad',loteSize:1,estMin:4}],
 ordenes:[],ventas:[],gastos:[],
 gastoCategorias:['Insumo','Herramienta','Máquina','Otro'],
 historial:[{id:uid(),tipo:'ajuste',desc:'Carga inicial de stock de ejemplo',fecha:hoy()}],
 notas:[],
 config:{titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}},
-costos:{luz:0,manoObra:0,otros:0,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
+costos:{luz:0,manoObra:0,otros:0,merma:10,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
 };}
 function mkProd(id,name,catId,emoji,stock){return{id,name,categoryId:catId,emoji,foto:null,caracteristicas:'',
 insumos:[],pasos:[
@@ -133,10 +135,16 @@ function migrar(d){
  if(!d.config)d.config={titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}};
  if(!d.config.icono)d.config.icono='📖';
  if(!d.config.gifs)d.config.gifs={completo:null,venta:null,orden:null};
+ if(!Array.isArray(d.insumoCategorias))d.insumoCategorias=[{id:'ic1',nombre:'General'}];
+ (d.insumos||[]).forEach(i=>{if(!i.categoriaId)i.categoriaId=d.insumoCategorias[0].id;});
+ if(!Array.isArray(d.pasoCategorias))d.pasoCategorias=[{id:'pcat1',nombre:'General'}];
  if(!Array.isArray(d.pasosCatalogo)){
   const vistos={};d.pasosCatalogo=[];
-  (d.products||[]).forEach(pr=>(pr.pasos||[]).forEach(x=>{if(!vistos[x.name]){vistos[x.name]=1;d.pasosCatalogo.push({id:'pc'+d.pasosCatalogo.length+Math.random().toString(36).slice(2,5),name:x.name,unit:x.unit,loteSize:x.loteSize,estMin:x.estMin});}}));
+  (d.products||[]).forEach(pr=>(pr.pasos||[]).forEach(x=>{if(!vistos[x.name]){vistos[x.name]=1;d.pasosCatalogo.push({id:'pc'+d.pasosCatalogo.length+Math.random().toString(36).slice(2,5),categoriaId:d.pasoCategorias[0].id,name:x.name,unit:x.unit,loteSize:x.loteSize,estMin:x.estMin});}}));
  }
+ (d.pasosCatalogo||[]).forEach(x=>{if(!x.categoriaId)x.categoriaId=d.pasoCategorias[0].id;});
+ if(d.costos&&d.costos.merma==null)d.costos.merma=10;
+ (d.products||[]).forEach(pr=>{if(pr.usaMerma==null)pr.usaMerma=false;});
  (d.ordenes||[]).forEach(o=>{
   (o.items||[]).forEach(it=>{
    if(!Array.isArray(it.pasos)){const prod=d.products.find(p=>p.id===it.productId);it.pasos=prod?snapshotPasos(prod):[];it.completo=false;}
@@ -216,7 +224,7 @@ let tabActual='produccion';
 let ordenAbiertas=new Set(),catAbiertas=new Set(),prodAbiertos=new Set(),periodoFin='mes',statsAbierta=false,ultimoSnapshot=null;
 function renderTabs(){document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tabActual?'on':''}" data-tab="${k}">${l}</button>`).join('');
  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tabActual=b.dataset.tab;go();});}
-function go(){renderTabs();periodoFin='mes';statsAbierta=false;ordenAbiertas.clear();catAbiertas.clear();prodAbiertos.clear();({produccion:renderProduccion,stock:renderStock,productos:renderProductos,finanzas:renderFinanzas})[tabActual]();}
+function go(){renderTabs();periodoFin='mes';statsAbierta=false;ordenAbiertas.clear();catAbiertas.clear();prodAbiertos.clear();insumoCatAbiertas.clear();pasoCatAbiertas.clear();({produccion:renderProduccion,stock:renderStock,productos:renderProductos,finanzas:renderFinanzas})[tabActual]();}
 
 /* ================= PRODUCCIÓN ================= */
 function renderProduccion(){
@@ -336,12 +344,20 @@ function renderStock(){
   <span class="meta">Disponible</span><input type="number" style="width:70px" data-sd="${p.id}" value="${p.stockDisponible||0}">
   <span class="meta">Reservado</span><input type="number" style="width:70px" data-sr="${p.id}" value="${p.stockReservado||0}">
   </div></div>`).join('')||'<div class="empty">Sin productos</div>'}</div>
- <h3 class="sect">Insumos</h3><div class="card">
- ${db.insumos.map(i=>`<div class="row"><input type="text" data-inom="${i.id}" value="${i.nombre}" style="flex:2">
-  <div style="display:flex;align-items:center;gap:6px"><span class="meta">$/u</span><input type="number" style="width:70px" data-icosto="${i.id}" value="${i.costo||0}">
-  <span class="meta">Stock</span><input type="number" style="width:70px" data-ist="${i.id}" value="${i.stock||0}">
-  <button class="link" data-insdel="${i.id}" title="Eliminar insumo">✕</button></div></div>`).join('')||'<div class="empty">Sin insumos</div>'}
- <form id="f-insumo-stock" class="fila" style="margin-top:8px"><input type="text" id="is-n" placeholder="Nombre del insumo" required><input type="number" id="is-c" placeholder="Costo/u" style="width:90px" required><button class="btn" title="Agregar insumo nuevo">+ Insumo</button></form>
+ <h3 class="sect">Insumos</h3>
+ ${db.insumoCategorias.map(c=>{
+  const items=db.insumos.filter(i=>i.categoriaId===c.id);const ab=insumoCatAbiertas.has(c.id);
+  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-icat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-icatdel="${c.id}" title="Eliminar categoría">✕</button></div>
+  <div class="card" data-icatbody="${c.id}" style="display:${ab?'':'none'}">
+  ${items.map(i=>`<div class="row"><span class="meta">•</span><input type="text" data-inom="${i.id}" value="${i.nombre}" style="flex:2">
+   <div style="display:flex;align-items:center;gap:6px"><span class="meta">$/u</span><input type="number" style="width:70px" data-icosto="${i.id}" value="${i.costo||0}">
+   <span class="meta">Stock</span><input type="number" style="width:70px" data-ist="${i.id}" value="${i.stock||0}">
+   <button class="link" data-insdel="${i.id}" title="Eliminar insumo">✕</button></div></div>`).join('')||'<div class="empty">Sin insumos en esta categoría</div>'}
+  </div></div>`;}).join('')}
+ <div class="card">
+  <form id="f-insumo-stock" class="fila"><input type="text" id="is-n" placeholder="Nombre del insumo" required><input type="number" id="is-c" placeholder="Costo/u" style="width:90px" required>
+   <select id="is-cat">${db.insumoCategorias.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select><button class="btn" title="Agregar insumo nuevo">+ Insumo</button></form>
+  <form id="f-insumo-cat" class="fila" style="margin-top:6px"><input type="text" id="icat-n" placeholder="Nueva categoría de insumos"><button class="btn">+ Categoría</button></form>
  </div>
  <h3 class="sect">Equipamiento</h3><div class="card">
  ${db.equipos.map(e=>`<div class="row"><div>${e.nombre} <span class="meta">${e.fecha||''}</span></div><div style="display:flex;align-items:center;gap:8px">${fmt(e.costo)}<button class="link" data-eqdel="${e.id}" title="Eliminar equipo">Eliminar</button></div></div>`).join('')||'<div class="empty">Sin equipos cargados</div>'}
@@ -358,12 +374,15 @@ function renderStock(){
  document.querySelectorAll('[data-icosto]').forEach(el=>el.onchange=()=>{db.insumos.find(i=>i.id===el.dataset.icosto).costo=Number(el.value)||0;save();toast('Guardado');});
  document.querySelectorAll('[data-insdel]').forEach(el=>el.onclick=async()=>{if(await confirmar('¿Eliminar este insumo?')){db.insumos=db.insumos.filter(i=>i.id!==el.dataset.insdel);db.products.forEach(p=>p.insumos=(p.insumos||[]).filter(x=>x.insumoId!==el.dataset.insdel));save();renderStock();}});
  document.querySelectorAll('[data-eqdel]').forEach(el=>el.onclick=()=>{db.equipos=db.equipos.filter(e=>e.id!==el.dataset.eqdel);save();renderStock();});
- document.getElementById('f-insumo-stock').onsubmit=(e)=>{e.preventDefault();db.insumos.push({id:uid(),nombre:document.getElementById('is-n').value,costo:Number(document.getElementById('is-c').value)||0,stock:0});save();renderStock();};
+ document.getElementById('f-insumo-stock').onsubmit=(e)=>{e.preventDefault();const cat=document.getElementById('is-cat').value;db.insumos.push({id:uid(),categoriaId:cat,nombre:document.getElementById('is-n').value,costo:Number(document.getElementById('is-c').value)||0,stock:0});insumoCatAbiertas.add(cat);save();renderStock();};
+ document.getElementById('f-insumo-cat').onsubmit=(e)=>{e.preventDefault();const n=document.getElementById('icat-n').value.trim();if(!n)return;db.insumoCategorias.push({id:uid(),nombre:n});save();renderStock();};
+ document.querySelectorAll('[data-icat]').forEach(el=>el.onclick=()=>{const id=el.dataset.icat;const bd=document.querySelector(`[data-icatbody="${id}"]`);if(insumoCatAbiertas.has(id)){insumoCatAbiertas.delete(id);el.classList.add('cl');bd.style.display='none';}else{insumoCatAbiertas.add(id);el.classList.remove('cl');bd.style.display='';}});
+ document.querySelectorAll('[data-icatdel]').forEach(el=>el.onclick=async(ev)=>{ev.stopPropagation();const n=db.insumos.filter(i=>i.categoriaId===el.dataset.icatdel).length;if(n)return avisar(`Esta categoría tiene ${n} insumo(s). Borralos o pasalos a otra antes.`);if(db.insumoCategorias.length<=1)return toast('Dejá al menos una categoría');if(await confirmar('¿Eliminar esta categoría?')){db.insumoCategorias=db.insumoCategorias.filter(c=>c.id!==el.dataset.icatdel);save();renderStock();}});
  document.getElementById('f-equipo').onsubmit=(e)=>{e.preventDefault();db.equipos.push({id:uid(),nombre:document.getElementById('eq-n').value,costo:Number(document.getElementById('eq-c').value),fecha:document.getElementById('eq-f').value});save();renderStock();};
 }
 
 /* ================= PRODUCTOS ================= */
-let editId=null,pasosForm=[],insumosForm=[],fotoForm=null,emojiSeleccionado='📦',realSel=null,vendSel=null,usaLuz=false,usaManoObra=false,usaOtros=false,notasLimite=20;
+let editId=null,pasosForm=[],insumosForm=[],fotoForm=null,emojiSeleccionado='📦',realSel=null,vendSel=null,usaLuz=false,usaManoObra=false,usaOtros=false,usaMerma=false,notasLimite=20,insumoCatAbiertas=new Set(),pasoCatAbiertas=new Set();
 const EMOJIS=['📔','📓','📖','📚','📕','📗','📘','📙','🖼️','🎨','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦄','🐝','🦋','🐢','🐬','🐳','🦖','🌸','🌼','🌻','🌷','🌈','⭐','✨','🌙','☀️','☁️','⚡','❄️','🔥','🍀','🌵','🌲','🍎','🍊','🍋','🍉','🍇','🍓','🍒','🍑','🍍','🥑','🍕','🍩','🎂','🍰','🧁','🍭','🍫','☕','🎁','🎈','🎉','🎊','🎀','🎄','🎃','👑','💎','💍','⚽','🏀','🎮','🎲','🎸','🎹','🎭','🎬','📷','📸','🎥','✏️','🖊️','🖌️','🗒️','📎','📌','📍','🔖','🏷️','💼','🚗','🚲','✈️','⛵','🚀','🏠','🏰','⛺','🌍','🗺️','💡','🔑','🔒','⏰','📅','💰','💵','🛍️','👗','👟','💄','🦸','🧙','🧚','👻','☠️','🤖','👽','😀','😎','🥰','🤩','🥳','😻','🦉','🦓','🦒','🐴','🐑','🐐','🦆','🐟','🦈',
 '👶','🧒','👦','👧','🧑','👨','👩','🧓','👴','👵','👫','👬','👭','💑','💒','👰','🤵','🤰','🧑‍🍼','👨‍👩‍👧','👨‍👩‍👧‍👦','🎓','🏆','🥇','🎗️','🕯️','🧸','🍼','👶🏻','🧑‍🎄','🎅','🤶','🥳','🎆','🎇','🧁','🍾','🥂'];
 function renderProductos(){
@@ -391,7 +410,7 @@ function renderProductos(){
   <label>Características</label><textarea id="pr-carac" rows="2" placeholder="Ej: imprimir en ink y luego foil"></textarea>
   <label>Insumos <span class="meta">(tildá los que usa este producto y poné cuántos)</span></label><div id="pr-insumos"></div><button type="button" class="btn" id="btn-add-insumo" title="Agregar una fila de insumo">+ Insumo</button>
   <label style="margin-top:10px">Pasos de producción <span class="meta">(tildá los que aplican)</span></label><div id="pr-pasos"></div><div class="fila"><button type="button" class="btn" id="btn-add-paso" title="Agregar un paso nuevo">+ Paso nuevo</button>
-  <select id="sel-paso-guardado"><option value="">— elegir paso guardado —</option>${db.pasosCatalogo.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select>
+  <select id="sel-paso-guardado"><option value="">— elegir paso guardado —</option>${db.pasoCategorias.map(c=>{const it=db.pasosCatalogo.filter(x=>x.categoriaId===c.id);return it.length?`<optgroup label="${c.nombre}">${it.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</optgroup>`:'';}).join('')}</select>
   <button type="button" class="btn" id="btn-usar-paso" title="Agregar el paso guardado seleccionado">Usar</button></div>
   <div class="meta" id="pr-tiempo-total" style="margin-top:6px"></div>
   <div class="meta" id="pr-costo-insumos-linea"></div>
@@ -402,6 +421,7 @@ function renderProductos(){
    <div class="check-row"><input type="checkbox" id="co-luz" ${usaLuz?'checked':''}><span class="campo">Luz</span><input type="number" id="cg-luz" value="${db.costos.luz||0}" style="width:110px"></div>
    <div class="check-row"><input type="checkbox" id="co-mo" ${usaManoObra?'checked':''}><span class="campo">Mano de obra</span><input type="number" id="cg-mo" value="${db.costos.manoObra||0}" style="width:110px"></div>
    <div class="check-row"><input type="checkbox" id="co-ot" ${usaOtros?'checked':''}><span class="campo">Otros <span class="meta">(servicios, alquiler, desgaste de maquinaria, impuestos)</span></span><input type="number" id="cg-ot" value="${db.costos.otros||0}" style="width:110px"></div>
+   <div class="check-row"><input type="checkbox" id="co-merma" ${usaMerma?'checked':''}><span class="campo">Merma <span class="meta">(% del costo de insumos, por desperdicio)</span></span><input type="number" id="cg-merma" value="${db.costos.merma==null?10:db.costos.merma}" style="width:110px" step="0.5"></div>
    <div class="grid2"><div><label>Días de trabajo al mes</label><input type="number" id="cg-dias" value="${db.costos.diasMes||24}"></div><div><label>Horas de trabajo al día</label><input type="number" id="cg-horas" value="${db.costos.horasDia||5}"></div></div>
    <div id="pr-desglose" class="meta" style="margin-top:8px"></div>
   </div></details>
@@ -418,13 +438,18 @@ function renderProductos(){
  </form></div>
 
  <h3 class="sect">Pasos guardados</h3>
- <div class="card">
-  <p class="meta">Se guardan para reutilizarlos en cualquier producto (los podés editar o borrar acá).</p>
-  ${db.pasosCatalogo.map(x=>`<div class="fila"><input type="text" data-pcn="${x.id}" value="${x.name}" style="flex:2;min-width:120px">
+ <p class="meta" style="margin:-4px 0 8px">Se guardan para reutilizarlos en cualquier producto (los podés editar o borrar acá).</p>
+ ${db.pasoCategorias.map(c=>{
+  const items=db.pasosCatalogo.filter(x=>x.categoriaId===c.id);const ab=pasoCatAbiertas.has(c.id);
+  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-pcat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-pcatdel="${c.id}" title="Eliminar categoría">✕</button></div>
+  <div class="card" data-pcatbody="${c.id}" style="display:${ab?'':'none'}">
+  ${items.map(x=>`<div class="fila"><span class="meta">•</span><input type="text" data-pcn="${x.id}" value="${x.name}" style="flex:2;min-width:120px">
    <select data-pcu="${x.id}"><option value="lote" ${x.unit==='lote'?'selected':''}>Lote</option><option value="unidad" ${x.unit==='unidad'?'selected':''}>Unidad</option></select>
    <input type="number" data-pcm="${x.id}" value="${x.estMin}" title="Minutos" style="width:80px">
-   <button type="button" class="link" data-pcdel="${x.id}" title="Borrar paso guardado">✕</button></div>`).join('')||'<div class="empty">Todavía no guardaste pasos</div>'}
- </div>
+   <select data-pcc="${x.id}" title="Mover a otra categoría">${db.pasoCategorias.map(k=>`<option value="${k.id}" ${k.id===x.categoriaId?'selected':''}>${k.nombre}</option>`).join('')}</select>
+   <button type="button" class="link" data-pcdel="${x.id}" title="Borrar paso guardado">✕</button></div>`).join('')||'<div class="empty">Sin pasos en esta categoría</div>'}
+  </div></div>`;}).join('')}
+ <div class="card"><form id="f-paso-cat" class="fila"><input type="text" id="pcat-n" placeholder="Nueva categoría de pasos (ej: Impresión)"><button class="btn">+ Categoría</button></form></div>
 
  <h3 class="sect">Calculadora rápida de insumos</h3>
  <div class="card">
@@ -465,9 +490,9 @@ function renderProdItem(p){
  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" data-edit="${p.id}">Editar</button><button class="btn d" data-del="${p.id}">Eliminar</button></div>
  <details class="sd" open><summary>Características</summary><div>${p.caracteristicas||'<span class="meta">Sin datos</span>'}</div></details>
  <details class="sd"><summary>Precio y costo</summary><div>Venta: <strong>${p.precioVenta!=null?fmt(p.precioVenta):'—'}</strong><br>Costo: <strong>${p.costoProduccion!=null?fmt(p.costoProduccion):'—'}</strong>${ganancia!=null?`<br>Ganancia: <strong>${fmt(ganancia)}</strong>`:''}</div></details>
- <details class="sd"><summary>Pasos</summary><div>${p.pasos.filter(s=>s.on!==false).map(s=>`${s.name} — ${s.unit==='lote'?`lote de ${s.loteSize}`:'unidad'} (${s.estMin}min)`).join('<br>')}</div></details>
+ <details class="sd"><summary>Pasos</summary><div>${p.pasos.filter(s=>s.on!==false).map(s=>`• ${s.name} — ${s.unit==='lote'?`lote de ${s.loteSize}`:'unidad'} (${s.estMin}min)`).join('<br>')}</div></details>
  <details class="sd"><summary>Stock</summary><div>Disponible ${p.stockDisponible||0} · Reservado ${p.stockReservado||0}</div></details>
- <details class="sd"><summary>Insumos</summary><div>${(p.insumos||[]).length?p.insumos.map(x=>{const i=db.insumos.find(i=>i.id===x.insumoId);return i?`${i.nombre} × ${x.cantidad} = ${fmt(i.costo*x.cantidad)}`:'';}).join('<br>'):'<span class="meta">Sin insumos</span>'}</div></details>
+ <details class="sd"><summary>Insumos</summary><div>${(p.insumos||[]).length?p.insumos.map(x=>{const i=db.insumos.find(i=>i.id===x.insumoId);return i?`• ${i.nombre} × ${x.cantidad} = ${fmt(i.costo*x.cantidad)}`:'';}).join('<br>'):'<span class="meta">Sin insumos</span>'}</div></details>
  </div></div>`;
 }
 function wireProductos(){
@@ -508,19 +533,23 @@ function wireProductos(){
  document.querySelectorAll('[data-pcn]').forEach(el=>el.onchange=()=>{db.pasosCatalogo.find(x=>x.id===el.dataset.pcn).name=el.value;save();toast('Guardado');});
  document.querySelectorAll('[data-pcu]').forEach(el=>el.onchange=()=>{db.pasosCatalogo.find(x=>x.id===el.dataset.pcu).unit=el.value;save();toast('Guardado');});
  document.querySelectorAll('[data-pcm]').forEach(el=>el.onchange=()=>{db.pasosCatalogo.find(x=>x.id===el.dataset.pcm).estMin=Number(el.value)||0;save();toast('Guardado');});
+ document.querySelectorAll('[data-pcc]').forEach(el=>el.onchange=()=>{db.pasosCatalogo.find(x=>x.id===el.dataset.pcc).categoriaId=el.value;save();pasoCatAbiertas.add(el.value);renderProductos();});
+ document.getElementById('f-paso-cat').onsubmit=(e)=>{e.preventDefault();const n=document.getElementById('pcat-n').value.trim();if(!n)return;db.pasoCategorias.push({id:uid(),nombre:n});save();renderProductos();};
+ document.querySelectorAll('[data-pcat]').forEach(el=>el.onclick=()=>{const id=el.dataset.pcat;const bd=document.querySelector(`[data-pcatbody="${id}"]`);if(pasoCatAbiertas.has(id)){pasoCatAbiertas.delete(id);el.classList.add('cl');bd.style.display='none';}else{pasoCatAbiertas.add(id);el.classList.remove('cl');bd.style.display='';}});
+ document.querySelectorAll('[data-pcatdel]').forEach(el=>el.onclick=async(ev)=>{ev.stopPropagation();const n=db.pasosCatalogo.filter(x=>x.categoriaId===el.dataset.pcatdel).length;if(n)return avisar(`Esta categoría tiene ${n} paso(s). Borralos o pasalos a otra antes.`);if(db.pasoCategorias.length<=1)return toast('Dejá al menos una categoría');if(await confirmar('¿Eliminar esta categoría?')){db.pasoCategorias=db.pasoCategorias.filter(c=>c.id!==el.dataset.pcatdel);save();renderProductos();}});
  document.querySelectorAll('[data-pcdel]').forEach(el=>el.onclick=()=>{db.pasosCatalogo=db.pasosCatalogo.filter(x=>x.id!==el.dataset.pcdel);save();renderProductos();});
  document.getElementById('btn-add-paso').onclick=()=>{pasosForm.push({id:uid(),name:'',unit:'lote',loteSize:9999,estMin:10,on:true});renderPasosForm();};
  document.getElementById('btn-add-insumo').onclick=()=>{insumosForm.push({insumoId:db.insumos[0]?.id||null,cantidad:1,on:true});renderInsumosForm();actualizarCostoInsumosLinea();recalcGanancia();};
  document.getElementById('pr-foto').onchange=async(e)=>{const f=e.target.files[0];if(!f)return;if(f.size>3.5*1024*1024)return toast('Imagen muy pesada, usá una menor a 3.5MB');try{fotoForm=await comprimirImagen(f);document.getElementById('pr-foto-prev').src=fotoForm;document.getElementById('pr-foto-prev-wrap').style.display='flex';}catch(err){toast('No pude leer esa imagen');}};
  document.getElementById('btn-quitar-foto').onclick=()=>{fotoForm=null;document.getElementById('pr-foto').value='';document.getElementById('pr-foto-prev-wrap').style.display='none';};
- document.getElementById('btn-limpiar').onclick=()=>{editId=null;pasosForm=[];insumosForm=[];fotoForm=null;emojiSeleccionado='📦';usaLuz=usaManoObra=usaOtros=false;renderProductos();};
+ document.getElementById('btn-limpiar').onclick=()=>{editId=null;pasosForm=[];insumosForm=[];fotoForm=null;emojiSeleccionado='📦';usaLuz=usaManoObra=usaOtros=usaMerma=false;renderProductos();};
 
- ['co-luz','co-mo','co-ot'].forEach(id=>document.getElementById(id).onchange=(e)=>{
-  if(id==='co-luz')usaLuz=e.target.checked;if(id==='co-mo')usaManoObra=e.target.checked;if(id==='co-ot')usaOtros=e.target.checked;
+ ['co-luz','co-mo','co-ot','co-merma'].forEach(id=>document.getElementById(id).onchange=(e)=>{
+  if(id==='co-luz')usaLuz=e.target.checked;if(id==='co-mo')usaManoObra=e.target.checked;if(id==='co-ot')usaOtros=e.target.checked;if(id==='co-merma')usaMerma=e.target.checked;
   recalcGanancia();
  });
- ['cg-luz','cg-mo','cg-ot','cg-dias','cg-horas'].forEach(id=>document.getElementById(id).onchange=(e)=>{
-  const map={'cg-luz':'luz','cg-mo':'manoObra','cg-ot':'otros','cg-dias':'diasMes','cg-horas':'horasDia'};
+ ['cg-luz','cg-mo','cg-ot','cg-merma','cg-dias','cg-horas'].forEach(id=>document.getElementById(id).onchange=(e)=>{
+  const map={'cg-luz':'luz','cg-mo':'manoObra','cg-ot':'otros','cg-merma':'merma','cg-dias':'diasMes','cg-horas':'horasDia'};
   db.costos[map[id]]=Number(e.target.value)||0;save();recalcGanancia();
  });
 
@@ -531,14 +560,14 @@ function wireProductos(){
    emoji:emojiSeleccionado,foto:fotoForm,
    caracteristicas:document.getElementById('pr-carac').value,
    insumos:insumosForm.filter(x=>x.insumoId),pasos:pasosForm,
-   usaLuz,usaManoObra,usaOtros,
+   usaLuz,usaManoObra,usaOtros,usaMerma,
    precioVenta:document.getElementById('pr-precio').value?Number(document.getElementById('pr-precio').value):null,
    costoProduccion:costoAuto};
   if(!body.pasos.length||!body.pasos.every(p=>p.name))return toast('Completá el nombre de todos los pasos');
-  body.pasos.forEach(x=>{if(!db.pasosCatalogo.some(c=>c.name.toLowerCase()===x.name.toLowerCase()))db.pasosCatalogo.push({id:uid(),name:x.name,unit:x.unit,loteSize:x.loteSize,estMin:x.estMin});});
+  body.pasos.forEach(x=>{if(!db.pasosCatalogo.some(c=>c.name.toLowerCase()===x.name.toLowerCase()))db.pasosCatalogo.push({id:uid(),categoriaId:db.pasoCategorias[0].id,name:x.name,unit:x.unit,loteSize:x.loteSize,estMin:x.estMin});});
   if(editId){const p=getProd(editId);Object.assign(p,body,{stockDisponible:p.stockDisponible,stockReservado:p.stockReservado});toast('Producto actualizado');}
   else{db.products.push({id:uid(),...body,stockDisponible:0,stockReservado:0});toast('Producto creado');}
-  editId=null;pasosForm=[];insumosForm=[];fotoForm=null;emojiSeleccionado='📦';usaLuz=usaManoObra=usaOtros=false;save();renderProductos();
+  editId=null;pasosForm=[];insumosForm=[];fotoForm=null;emojiSeleccionado='📦';usaLuz=usaManoObra=usaOtros=usaMerma=false;save();renderProductos();
  };
  recalcGanancia();
  document.getElementById('pr-precio').oninput=recalcGanancia;
@@ -563,7 +592,8 @@ function costoTotalCalculado(){
  const horasProducto=pasosForm.filter(p=>p.on!==false).reduce((a,p)=>a+(p.estMin||0),0)/60;
  const mensual=(usaLuz?(db.costos.luz||0):0)+(usaManoObra?(db.costos.manoObra||0):0)+(usaOtros?(db.costos.otros||0):0);
  const costoPorHora=mensual>0?mensual/(db.costos.diasMes||24)/(db.costos.horasDia||5):0;
- return pc+costoPorHora*horasProducto;
+ const merma=usaMerma?pc*((db.costos.merma==null?10:db.costos.merma)/100):0;
+ return pc+costoPorHora*horasProducto+merma;
 }
 function desgloseCostoIndirecto(){
  const horasProducto=pasosForm.filter(p=>p.on!==false).reduce((a,p)=>a+(p.estMin||0),0)/60;
@@ -573,6 +603,7 @@ function desgloseCostoIndirecto(){
   luz:usaLuz?porHora(db.costos.luz||0):0,
   manoObra:usaManoObra?porHora(db.costos.manoObra||0):0,
   otros:usaOtros?porHora(db.costos.otros||0):0,
+  merma:usaMerma?insumosForm.filter(x=>x.on!==false&&x.insumoId).reduce((a,x)=>a+(x.cantidad||0)*(db.insumos.find(i=>i.id===x.insumoId)?.costo||0),0)*((db.costos.merma==null?10:db.costos.merma)/100):0,
   horasProducto
  };
 }
@@ -580,18 +611,19 @@ function recalcGanancia(){
  const pv=Number(document.getElementById('pr-precio').value)||0;
  const pc=costoTotalCalculado();
  document.getElementById('pr-costo-auto').textContent=fmt(pc);
- document.getElementById('pr-ganancia').textContent=pv?`Ganancia: ${fmt(pv-pc)}`:'';
+ document.getElementById('pr-ganancia').textContent=pv?`Ganancia: ${fmt(pv-pc)}${pc>0?` (${((pv-pc)/pc*100).toFixed(0)}% sobre el costo)`:''}`:'';
  const d=desgloseCostoIndirecto(),el=document.getElementById('pr-desglose');
  if(el){
   const partes=[];
   if(usaLuz)partes.push(`Luz: ${fmt(d.luz)}`);
   if(usaManoObra)partes.push(`Mano de obra: ${fmt(d.manoObra)}`);
   if(usaOtros)partes.push(`Otros: ${fmt(d.otros)}`);
+  if(usaMerma)partes.push(`Merma: ${fmt(d.merma)}`);
   el.textContent=partes.length?`Lo que suma a este producto (${d.horasProducto.toFixed(2)} h de trabajo): ${partes.join(' · ')}`:'Ningún costo fijo tildado para este producto.';
  }
 }
 function renderPasosForm(){const c=document.getElementById('pr-pasos');
- c.innerHTML=pasosForm.map((p,i)=>`<div class="fila">
+ c.innerHTML=pasosForm.map((p,i)=>`<div class="fila"><span class="meta">•</span>
   <input type="checkbox" data-pon="${i}" ${p.on!==false?'checked':''}>
   <input type="text" data-pn="${i}" value="${p.name}" placeholder="Nombre del paso">
   <select data-pu="${i}"><option value="lote" ${p.unit==='lote'?'selected':''}>Lote</option><option value="unidad" ${p.unit==='unidad'?'selected':''}>Unidad</option></select>
@@ -613,9 +645,9 @@ function actualizarCostoInsumosLinea(){
  el.textContent=`💰 Costo total de insumos: ${fmt(pc)}`;
 }
 function renderInsumosForm(){const c=document.getElementById('pr-insumos');
- c.innerHTML=insumosForm.map((x,i)=>`<div class="fila">
+ c.innerHTML=insumosForm.map((x,i)=>`<div class="fila"><span class="meta">•</span>
   <input type="checkbox" data-ion="${i}" ${x.on!==false?'checked':''} title="Sumar este insumo al costo">
-  <select data-iid="${i}">${db.insumos.map(ins=>`<option value="${ins.id}" ${ins.id===x.insumoId?'selected':''}>${ins.nombre} (${fmt(ins.costo)})</option>`).join('')}</select>
+  <select data-iid="${i}">${db.insumoCategorias.map(c=>{const it=db.insumos.filter(n=>n.categoriaId===c.id);return it.length?`<optgroup label="${c.nombre}">${it.map(ins=>`<option value="${ins.id}" ${ins.id===x.insumoId?'selected':''}>${ins.nombre} (${fmt(ins.costo)})</option>`).join('')}</optgroup>`:'';}).join('')}</select>
   <input type="number" data-icant="${i}" value="${x.cantidad}" style="width:96px" min="0" step="0.1" title="Cantidad usada">
   <button type="button" class="link" data-irm="${i}" title="Quitar este insumo" style="font-size:16px;font-weight:800">✕</button></div>`).join('')
   +`<div class="fila" style="margin-top:6px"><input type="text" id="ni-n" placeholder="Nuevo insumo"><input type="number" id="ni-c" placeholder="Costo/u" style="width:90px"><button type="button" class="btn" id="ni-add" title="Crear insumo y agregarlo">+ Crear insumo</button></div>`;
@@ -625,7 +657,7 @@ function renderInsumosForm(){const c=document.getElementById('pr-insumos');
  c.querySelectorAll('[data-irm]').forEach(el=>el.onclick=()=>{insumosForm.splice(el.dataset.irm,1);renderInsumosForm();actualizarCostoInsumosLinea();recalcGanancia();});
  document.getElementById('ni-add').onclick=()=>{const n=document.getElementById('ni-n').value.trim(),cst=Number(document.getElementById('ni-c').value)||0;if(!n)return;const ins={id:uid(),nombre:n,costo:cst,stock:0};db.insumos.push(ins);save();insumosForm.push({insumoId:ins.id,cantidad:1,on:true});renderInsumosForm();actualizarCostoInsumosLinea();recalcGanancia();};
 }
-function cargarEdicion(id){const p=getProd(id);editId=id;pasosForm=JSON.parse(JSON.stringify(p.pasos));insumosForm=JSON.parse(JSON.stringify(p.insumos||[]));fotoForm=p.foto;emojiSeleccionado=p.emoji;usaLuz=!!p.usaLuz;usaManoObra=!!p.usaManoObra;usaOtros=!!p.usaOtros;
+function cargarEdicion(id){const p=getProd(id);editId=id;pasosForm=JSON.parse(JSON.stringify(p.pasos));insumosForm=JSON.parse(JSON.stringify(p.insumos||[]));fotoForm=p.foto;emojiSeleccionado=p.emoji;usaLuz=!!p.usaLuz;usaManoObra=!!p.usaManoObra;usaOtros=!!p.usaOtros;usaMerma=!!p.usaMerma;
  renderProductos();
  document.getElementById('pr-n').value=p.name;document.getElementById('pr-c').value=p.categoryId;
  document.getElementById('pr-carac').value=p.caracteristicas||'';

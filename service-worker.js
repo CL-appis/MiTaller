@@ -1,4 +1,4 @@
-const CACHE = 'mi-taller-v1';
+const CACHE = 'mi-taller-v2';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -13,9 +13,19 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Cache-first: la app funciona sin internet una vez instalada.
+// Primero intenta traer la versión más nueva desde internet.
+// Si no hay conexión, usa la copia guardada (así sigue funcionando sin internet).
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
+    fetch(e.request)
+      .then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
