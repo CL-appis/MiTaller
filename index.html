@@ -12,6 +12,9 @@
 :root{--bg:#faf6f1;--surface:#fff;--text:#2e241d;--muted:#8a7a6d;--accent:#d97757;--accentsoft:#f3ded2;
 --page:linear-gradient(160deg,#f6ede2,#f2e2d3 45%,#eddcc8);--ok:#6e8b5a;--oksoft:#e4ecdd;--warn:#e0a458;--warnsoft:#faedd9;--bad:#c1584b;--badsoft:#f6e0dc;--border:#ece3d8;--r:16px;--rs:10px;}
 body[data-theme=pastel]{--bg:#fdf5f9;--surface:#fff;--text:#4a3a47;--muted:#9a8797;--accent:#c77dba;--accentsoft:#f6e3f3;--ok:#6fb59b;--warn:#f0c26b;--bad:#d9707f;--border:#f0dfe9;--page:linear-gradient(160deg,#fdeef6,#f3e9fb 50%,#e9f3fb)}
+body[data-theme=frio]{--bg:#f1f5f6;--surface:#fff;--text:#243238;--muted:#62767d;--accent:#4a7c90;--accentsoft:#dce9ee;--ok:#5f7f45;--oksoft:#e3ebd8;--warn:#b8932f;--warnsoft:#f3ecd3;--bad:#b25a5e;--badsoft:#f1dfe0;--border:#dbe5e8;--page:linear-gradient(160deg,#e9f0f2,#e4ebe2 50%,#e6ecef)}
+body[data-theme=frio] header h1{background:linear-gradient(90deg,var(--accent),#6f8f55);-webkit-background-clip:text;background-clip:text;color:transparent}
+body[data-theme=frio] .pbar>div.warn{background:#d1ac4a}
 body[data-theme=oscuro]{--bg:#1f1c19;--surface:#2b2723;--text:#f1ebe4;--muted:#a89b8f;--accent:#e08b6a;--accentsoft:#4a3428;--ok:#7fb069;--warn:#e0b458;--bad:#e5786d;--border:#3d3732;--page:linear-gradient(160deg,#141210,#1a1714 50%,#12100e)}
 body[data-theme=oscuro] input,body[data-theme=oscuro] select,body[data-theme=oscuro] textarea{color-scheme:dark}
 *{box-sizing:border-box}
@@ -234,7 +237,12 @@ function renderProduccion(){
  const m=document.getElementById('main');
  m.innerHTML=`
  <h3 class="sect">Ahora te conviene</h3>
- ${ords.length?ords.map(renderChecklistOrden).join(''):'<div class="card empty">Todavía no tenés órdenes activas. Creá una abajo.</div>'}
+ ${ords.length?`
+ <div class="catgrp"><div class="cathd ${vistaAbiertas.has('tarea')?'':'cl'}" data-vista="tarea"><span class="chev">▾</span> Por tarea <span class="meta">(todos los productos juntos)</span></div>
+ <div data-vistabody="tarea" style="display:${vistaAbiertas.has('tarea')?'':'none'}">${renderPorTarea(ords)}</div></div>
+ <div class="catgrp"><div class="cathd ${vistaAbiertas.has('prod')?'':'cl'}" data-vista="prod"><span class="chev">▾</span> Por producto</div>
+ <div data-vistabody="prod" style="display:${vistaAbiertas.has('prod')?'':'none'}">${ords.map(renderChecklistOrden).join('')}</div></div>`
+ :'<div class="card empty">Todavía no tenés órdenes activas. Creá una abajo.</div>'}
  <h3 class="sect">Nueva orden</h3>
  <div class="card"><form id="f-orden">
   <label>Fecha objetivo</label><input type="date" id="o-fecha" required>
@@ -249,7 +257,40 @@ function renderProduccion(){
  <h3 class="sect">Órdenes terminadas <span class="meta">(últimos 7 días)</span></h3>
  <div class="card">${terminadas.length?terminadas.map(o=>`<div class="row"><div>${o.items.map(it=>`${it.emoji||''} ${getProd(it.productId)?.name||it.name||''} × ${it.qty}`).join(', ')||o.pasosManuales.map(p=>p.texto).join(', ')}</div><div style="display:flex;gap:8px;align-items:center"><span class="meta">✅ ${o.completadaFecha||o.targetDate}</span><button type="button" class="link" data-ordel="${o.id}" title="Borrar de la lista">✕</button></div></div>`).join(''):'<div class="empty">Ninguna todavía</div>'}</div>`;
  wireChecklist(); wireOrdenForm();
+ document.querySelectorAll('[data-vista]').forEach(el=>el.onclick=()=>{const k=el.dataset.vista,bd=document.querySelector(`[data-vistabody="${k}"]`);if(vistaAbiertas.has(k)){vistaAbiertas.delete(k);el.classList.add('cl');bd.style.display='none';}else{vistaAbiertas.add(k);el.classList.remove('cl');bd.style.display='';}});
  document.querySelectorAll('[data-ordel]').forEach(el=>el.onclick=async()=>{if(await confirmar('¿Eliminar este pedido? Lo que ya se sumó al stock se mantiene.')){db.ordenes=db.ordenes.filter(x=>x.id!==el.dataset.ordel);save();renderProduccion();}});
+}
+let vistaAbiertas=new Set(['tarea','prod']);
+function renderPorTarea(ords){
+ const catDe=(name)=>{const c=db.pasosCatalogo.find(x=>x.name.toLowerCase()===String(name).toLowerCase());return c&&db.pasoCategorias.some(k=>k.id===c.categoriaId)?c.categoriaId:'_sin';};
+ const grupos={};
+ ords.forEach(o=>o.items.forEach((it,idx)=>{
+  if(it.completo)return;
+  it.pasos.forEach(s=>{
+   if(s.done>=it.qty)return;
+   const cid=catDe(s.name);((grupos[cid]=grupos[cid]||{})[s.name]=grupos[cid][s.name]||{rows:[],falta:0,total:0,hecho:0});
+   const g=grupos[cid][s.name];g.rows.push({o,it,idx,s});g.falta+=it.qty-s.done;g.total+=it.qty;g.hecho+=s.done;
+  });
+ }));
+ const orden=[...db.pasoCategorias.map(c=>({id:c.id,nombre:c.nombre})),{id:'_sin',nombre:'Sin categoría'}];
+ let html='';
+ orden.forEach(c=>{
+  const tareas=grupos[c.id];if(!tareas)return;
+  const filasT=Object.keys(tareas).map(name=>{
+   const g=tareas[name];const pct=g.total?Math.round(100*g.hecho/g.total):0;const key='t:'+c.id+':'+name;
+   return `<details class="sd" data-key="${key}" ${ordenAbiertas.has(key)?'open':''} style="border-top:none;border-bottom:1px solid var(--border);padding-bottom:8px">
+   <summary style="list-style:none"><div style="display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text)"><strong style="flex:1">${name}</strong><span class="meta">faltan ${g.falta} · ${g.hecho}/${g.total}</span></div>
+   <div class="pbar"><div class="${colorBarra(pct)}" style="width:${pct}%"></div></div></summary>
+   ${g.rows.map(r=>{const rest=r.it.qty-r.s.done;const p2=Math.round(100*r.s.done/r.it.qty);return `<div class="row" style="gap:6px;flex-wrap:wrap">
+    <div style="flex:1;min-width:120px"><div>${r.it.emoji} ${r.it.name} <span class="meta">${r.s.done}/${r.it.qty}</span></div><div class="pbar"><div class="${colorBarra(p2)}" style="width:${p2}%"></div></div></div>
+    <input type="number" min="1" max="${rest}" value="${rest}" data-cant data-orden="${r.o.id}" data-item="${r.idx}" data-step-id="${r.s.id}" style="width:64px;flex:0 0 auto">
+    <button type="button" class="btn p" data-confirmar data-orden="${r.o.id}" data-item="${r.idx}" data-step-id="${r.s.id}" title="Registrar esta cantidad" style="padding:8px 12px;flex:0 0 auto">✓</button></div>`;}).join('')}
+   </details>`;}).join('');
+  html+=`<div class="card"><div class="ct">${c.nombre}</div>${filasT}</div>`;
+ });
+ const manuales=ords.flatMap(o=>(o.pasosManuales||[]).map(p=>({o,p})));
+ if(manuales.length)html+=`<div class="card"><div class="ct">Pasos manuales</div>${manuales.map(({o,p})=>`<div class="row"><label class="steplabel"><input type="checkbox" data-manual data-orden="${o.id}" data-paso="${p.id}" ${p.hecho?'checked':''}><span class="${p.hecho?'strike':''}">${p.texto}</span></label></div>`).join('')}</div>`;
+ return html||'<div class="card empty">Todo listo 🎉</div>';
 }
 function renderChecklistOrden(o){
  const bloques=[];
@@ -283,7 +324,7 @@ function renderChecklistOrden(o){
 function wireChecklist(){
  document.querySelectorAll('[data-key]').forEach(el=>el.ontoggle=()=>{if(el.open)ordenAbiertas.add(el.dataset.key);else ordenAbiertas.delete(el.dataset.key);});
  document.querySelectorAll('[data-confirmar]').forEach(el=>el.onclick=()=>{
-  const cantEl=document.querySelector(`[data-cant][data-orden="${el.dataset.orden}"][data-item="${el.dataset.item}"][data-step-id="${el.dataset.stepId}"]`);
+  const cantEl=el.parentElement.querySelector('[data-cant]');
   const v=Number(cantEl.value)||0;if(v<=0)return toast('Poné una cantidad mayor a 0');
   avanzarPasoOrden(el.dataset.orden,Number(el.dataset.item),el.dataset.stepId,v);
   save();renderProduccion();
@@ -334,6 +375,7 @@ function renderOPasos(){const c=document.getElementById('o-pasos');
 }
 
 /* ================= STOCK ================= */
+function moverCat(arr,id,dir){const i=arr.findIndex(c=>c.id===id),j=i+dir;if(i<0||j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];}
 function renderStock(){
  const m=document.getElementById('main');
  m.innerHTML=`<h3 class="sect">Stock de productos</h3>
@@ -347,11 +389,12 @@ function renderStock(){
  <h3 class="sect">Insumos</h3>
  ${db.insumoCategorias.map(c=>{
   const items=db.insumos.filter(i=>i.categoriaId===c.id);const ab=insumoCatAbiertas.has(c.id);
-  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-icat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-icatdel="${c.id}" title="Eliminar categoría">✕</button></div>
+  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-icat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-iup="${c.id}" title="Subir categoría">▲</button><button class="link" data-idn="${c.id}" title="Bajar categoría">▼</button><button class="link" data-icatdel="${c.id}" title="Eliminar categoría">✕</button></div>
   <div class="card" data-icatbody="${c.id}" style="display:${ab?'':'none'}">
   ${items.map(i=>`<div class="row"><span class="meta">•</span><input type="text" data-inom="${i.id}" value="${i.nombre}" style="flex:2">
    <div style="display:flex;align-items:center;gap:6px"><span class="meta">$/u</span><input type="number" style="width:70px" data-icosto="${i.id}" value="${i.costo||0}">
    <span class="meta">Stock</span><input type="number" style="width:70px" data-ist="${i.id}" value="${i.stock||0}">
+   <select data-icc="${i.id}" title="Mover a otra categoría" style="width:auto;max-width:130px">${db.insumoCategorias.map(k=>`<option value="${k.id}" ${k.id===i.categoriaId?'selected':''}>${k.nombre}</option>`).join('')}</select>
    <button class="link" data-insdel="${i.id}" title="Eliminar insumo">✕</button></div></div>`).join('')||'<div class="empty">Sin insumos en esta categoría</div>'}
   </div></div>`;}).join('')}
  <div class="card">
@@ -377,6 +420,8 @@ function renderStock(){
  document.getElementById('f-insumo-stock').onsubmit=(e)=>{e.preventDefault();const cat=document.getElementById('is-cat').value;db.insumos.push({id:uid(),categoriaId:cat,nombre:document.getElementById('is-n').value,costo:Number(document.getElementById('is-c').value)||0,stock:0});insumoCatAbiertas.add(cat);save();renderStock();};
  document.getElementById('f-insumo-cat').onsubmit=(e)=>{e.preventDefault();const n=document.getElementById('icat-n').value.trim();if(!n)return;db.insumoCategorias.push({id:uid(),nombre:n});save();renderStock();};
  document.querySelectorAll('[data-icat]').forEach(el=>el.onclick=()=>{const id=el.dataset.icat;const bd=document.querySelector(`[data-icatbody="${id}"]`);if(insumoCatAbiertas.has(id)){insumoCatAbiertas.delete(id);el.classList.add('cl');bd.style.display='none';}else{insumoCatAbiertas.add(id);el.classList.remove('cl');bd.style.display='';}});
+ document.querySelectorAll('[data-icc]').forEach(el=>el.onchange=()=>{db.insumos.find(i=>i.id===el.dataset.icc).categoriaId=el.value;insumoCatAbiertas.add(el.value);save();renderStock();toast('Movido');});
+ document.querySelectorAll('[data-iup],[data-idn]').forEach(el=>el.onclick=(ev)=>{ev.stopPropagation();moverCat(db.insumoCategorias,el.dataset.iup||el.dataset.idn,el.dataset.iup?-1:1);save();renderStock();});
  document.querySelectorAll('[data-icatdel]').forEach(el=>el.onclick=async(ev)=>{ev.stopPropagation();const n=db.insumos.filter(i=>i.categoriaId===el.dataset.icatdel).length;if(n)return avisar(`Esta categoría tiene ${n} insumo(s). Borralos o pasalos a otra antes.`);if(db.insumoCategorias.length<=1)return toast('Dejá al menos una categoría');if(await confirmar('¿Eliminar esta categoría?')){db.insumoCategorias=db.insumoCategorias.filter(c=>c.id!==el.dataset.icatdel);save();renderStock();}});
  document.getElementById('f-equipo').onsubmit=(e)=>{e.preventDefault();db.equipos.push({id:uid(),nombre:document.getElementById('eq-n').value,costo:Number(document.getElementById('eq-c').value),fecha:document.getElementById('eq-f').value});save();renderStock();};
 }
@@ -430,6 +475,9 @@ function renderProductos(){
    <div><label>Precio de venta</label><input type="number" id="pr-precio"></div>
    <div><label>Costo de producción <span class="meta">(auto)</span></label><div id="pr-costo-auto" class="big" style="font-size:20px">$0</div></div>
   </div>
+  <div class="grid2"><div><label>% de ganancia sobre el costo <span class="meta">(editable)</span></label><input type="number" id="pr-pct" step="1" placeholder="Ej: 120"></div>
+   <div><label>% del precio de venta</label><div id="pr-pct-precio" class="big" style="font-size:20px">—</div></div></div>
+  <div id="pr-repone" class="meta" style="margin-top:4px"></div>
   <div id="pr-ganancia" style="margin-top:6px;font-weight:700;font-size:16px;color:var(--ok)"></div>
   <div style="display:flex;gap:8px;margin-top:14px">
    <button class="btn p big" type="submit">${editId?'Guardar cambios':'Crear producto'}</button>
@@ -441,7 +489,7 @@ function renderProductos(){
  <p class="meta" style="margin:-4px 0 8px">Se guardan para reutilizarlos en cualquier producto (los podés editar o borrar acá).</p>
  ${db.pasoCategorias.map(c=>{
   const items=db.pasosCatalogo.filter(x=>x.categoriaId===c.id);const ab=pasoCatAbiertas.has(c.id);
-  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-pcat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-pcatdel="${c.id}" title="Eliminar categoría">✕</button></div>
+  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-pcat="${c.id}"><span class="chev">▾</span> ${c.nombre} <span class="meta">(${items.length})</span><span style="flex:1"></span><button class="link" data-pup="${c.id}" title="Subir categoría">▲</button><button class="link" data-pdn="${c.id}" title="Bajar categoría">▼</button><button class="link" data-pcatdel="${c.id}" title="Eliminar categoría">✕</button></div>
   <div class="card" data-pcatbody="${c.id}" style="display:${ab?'':'none'}">
   ${items.map(x=>`<div class="fila"><span class="meta">•</span><input type="text" data-pcn="${x.id}" value="${x.name}" style="flex:2;min-width:120px">
    <select data-pcu="${x.id}"><option value="lote" ${x.unit==='lote'?'selected':''}>Lote</option><option value="unidad" ${x.unit==='unidad'?'selected':''}>Unidad</option></select>
@@ -489,7 +537,7 @@ function renderProdItem(p){
  <div class="pdet ${abierto?'on':''}" data-d="${p.id}">
  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" data-edit="${p.id}">Editar</button><button class="btn d" data-del="${p.id}">Eliminar</button></div>
  <details class="sd" open><summary>Características</summary><div>${p.caracteristicas||'<span class="meta">Sin datos</span>'}</div></details>
- <details class="sd"><summary>Precio y costo</summary><div>Venta: <strong>${p.precioVenta!=null?fmt(p.precioVenta):'—'}</strong><br>Costo: <strong>${p.costoProduccion!=null?fmt(p.costoProduccion):'—'}</strong>${ganancia!=null?`<br>Ganancia: <strong>${fmt(ganancia)}</strong>`:''}</div></details>
+ <details class="sd"><summary>Precio y costo</summary><div>Venta: <strong>${p.precioVenta!=null?fmt(p.precioVenta):'—'}</strong><br>Costo: <strong>${p.costoProduccion!=null?fmt(p.costoProduccion):'—'}</strong>${ganancia!=null?`<br>${semaforo(p.precioVenta,p.costoProduccion).ico} Ganancia: <strong>${fmt(ganancia)}</strong>${p.costoProduccion>0?` (${Math.round(ganancia/p.costoProduccion*100)}% sobre el costo · ${Math.round(ganancia/p.precioVenta*100)}% del precio)`:''}`:''}</div></details>
  <details class="sd"><summary>Pasos</summary><div>${p.pasos.filter(s=>s.on!==false).map(s=>`• ${s.name} — ${s.unit==='lote'?`lote de ${s.loteSize}`:'unidad'} (${s.estMin}min)`).join('<br>')}</div></details>
  <details class="sd"><summary>Stock</summary><div>Disponible ${p.stockDisponible||0} · Reservado ${p.stockReservado||0}</div></details>
  <details class="sd"><summary>Insumos</summary><div>${(p.insumos||[]).length?p.insumos.map(x=>{const i=db.insumos.find(i=>i.id===x.insumoId);return i?`• ${i.nombre} × ${x.cantidad} = ${fmt(i.costo*x.cantidad)}`:'';}).join('<br>'):'<span class="meta">Sin insumos</span>'}</div></details>
@@ -536,6 +584,7 @@ function wireProductos(){
  document.querySelectorAll('[data-pcc]').forEach(el=>el.onchange=()=>{db.pasosCatalogo.find(x=>x.id===el.dataset.pcc).categoriaId=el.value;save();pasoCatAbiertas.add(el.value);renderProductos();});
  document.getElementById('f-paso-cat').onsubmit=(e)=>{e.preventDefault();const n=document.getElementById('pcat-n').value.trim();if(!n)return;db.pasoCategorias.push({id:uid(),nombre:n});save();renderProductos();};
  document.querySelectorAll('[data-pcat]').forEach(el=>el.onclick=()=>{const id=el.dataset.pcat;const bd=document.querySelector(`[data-pcatbody="${id}"]`);if(pasoCatAbiertas.has(id)){pasoCatAbiertas.delete(id);el.classList.add('cl');bd.style.display='none';}else{pasoCatAbiertas.add(id);el.classList.remove('cl');bd.style.display='';}});
+ document.querySelectorAll('[data-pup],[data-pdn]').forEach(el=>el.onclick=(ev)=>{ev.stopPropagation();moverCat(db.pasoCategorias,el.dataset.pup||el.dataset.pdn,el.dataset.pup?-1:1);save();renderProductos();});
  document.querySelectorAll('[data-pcatdel]').forEach(el=>el.onclick=async(ev)=>{ev.stopPropagation();const n=db.pasosCatalogo.filter(x=>x.categoriaId===el.dataset.pcatdel).length;if(n)return avisar(`Esta categoría tiene ${n} paso(s). Borralos o pasalos a otra antes.`);if(db.pasoCategorias.length<=1)return toast('Dejá al menos una categoría');if(await confirmar('¿Eliminar esta categoría?')){db.pasoCategorias=db.pasoCategorias.filter(c=>c.id!==el.dataset.pcatdel);save();renderProductos();}});
  document.querySelectorAll('[data-pcdel]').forEach(el=>el.onclick=()=>{db.pasosCatalogo=db.pasosCatalogo.filter(x=>x.id!==el.dataset.pcdel);save();renderProductos();});
  document.getElementById('btn-add-paso').onclick=()=>{pasosForm.push({id:uid(),name:'',unit:'lote',loteSize:9999,estMin:10,on:true});renderPasosForm();};
@@ -571,6 +620,7 @@ function wireProductos(){
  };
  recalcGanancia();
  document.getElementById('pr-precio').oninput=recalcGanancia;
+ document.getElementById('pr-pct').oninput=(e)=>{const pc=costoTotalCalculado();const v=e.target.value;if(v===''||pc<=0){return;}document.getElementById('pr-precio').value=Math.round(pc*(1+Number(v)/100));recalcGanancia();};
 
  document.getElementById('btn-calc-insumos').onclick=()=>{
   const prod=getProd(document.getElementById('calc-prod').value);const qty=Number(document.getElementById('calc-qty').value)||0;
@@ -607,11 +657,24 @@ function desgloseCostoIndirecto(){
   horasProducto
  };
 }
+function semaforo(pv,pc){
+ if(!pv||!pc||pc<=0)return{ico:'',color:'var(--ok)',cls:''};
+ const p=(pv-pc)/pc*100;
+ if(p>=100)return{ico:'🟢',color:'var(--ok)',cls:'ok'};
+ if(p>=50)return{ico:'🟡',color:'var(--warn)',cls:'warn'};
+ return{ico:'🔴',color:'var(--bad)',cls:'bad'};
+}
 function recalcGanancia(){
  const pv=Number(document.getElementById('pr-precio').value)||0;
  const pc=costoTotalCalculado();
  document.getElementById('pr-costo-auto').textContent=fmt(pc);
- document.getElementById('pr-ganancia').textContent=pv?`Ganancia: ${fmt(pv-pc)}${pc>0?` (${((pv-pc)/pc*100).toFixed(0)}% sobre el costo)`:''}`:'';
+ const gEl=document.getElementById('pr-ganancia'),pctEl=document.getElementById('pr-pct');
+ const sem=semaforo(pv,pc);
+ gEl.textContent=pv?`${sem.ico} Ganancia: ${fmt(pv-pc)}${pc>0?` (${((pv-pc)/pc*100).toFixed(0)}% sobre el costo)`:''}`:'';
+ gEl.style.color=sem.color;
+ if(pctEl&&document.activeElement!==pctEl)pctEl.value=(pc>0&&pv)?Math.round((pv-pc)/pc*100):'';
+ document.getElementById('pr-pct-precio').textContent=(pv>0&&pc>0)?Math.round((pv-pc)/pv*100)+'%':'—';
+ document.getElementById('pr-repone').textContent=(pv>0&&pc>0)?`Una venta repone ${(pv/pc).toFixed(1).replace('.0','')} producto(s) de lo que cuesta fabricarlo.`:'';
  const d=desgloseCostoIndirecto(),el=document.getElementById('pr-desglose');
  if(el){
   const partes=[];
@@ -782,6 +845,35 @@ function aplicarConfig(){
  document.getElementById('app-titulo').textContent=(db.config.icono||'📖')+' '+(db.config.titulo||'Mi Taller');
  document.title=db.config.titulo||'Mi Taller';
 }
+function exportarDatos(){
+ const copia=JSON.parse(JSON.stringify(db));delete copia.config;
+ const blob=new Blob([JSON.stringify({app:'mi-taller',version:1,fecha:hoy(),data:copia})],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-taller-datos-'+hoy()+'.json';document.body.appendChild(a);a.click();
+ setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);toast('Archivo exportado');
+}
+async function importarDatos(texto,modo,modal){
+ let j;try{j=JSON.parse(texto);}catch(e){return avisar('Ese archivo no se puede leer.');}
+ if(!j||j.app!=='mi-taller'||!j.data||!Array.isArray(j.data.products))return avisar('Ese archivo no es una exportación de Mi Taller.');
+ const d=j.data;
+ if(modo==='todo'){
+  if(!(await confirmar('Esto <b>reemplaza todo</b> lo que hay en este dispositivo (productos, stock, órdenes, ventas, gastos, notas) por lo del archivo. Se mantienen tu estilo, nombre, ícono y GIFs. ¿Seguir?','Sí, reemplazar','No')))return;
+  d.config=db.config;migrar(d);db=d;
+  if(!save())return;modal.remove();aplicarConfig();go();toast('Datos importados');return;
+ }
+ if(!(await confirmar('Se agregan y actualizan categorías, productos, insumos y pasos guardados con lo del archivo. <b>No se borra nada</b> y se mantienen tu stock, ventas, gastos, órdenes y notas. ¿Seguir?','Sí, importar','No')))return;
+ const mezclar=(prop,conservar)=>{
+  if(!Array.isArray(d[prop]))return;db[prop]=db[prop]||[];
+  d[prop].forEach(x=>{const i=db[prop].findIndex(y=>y.id===x.id);
+   if(i<0){const n={...x};(conservar||[]).forEach(k=>{if(typeof n[k]==='number')n[k]=0;});db[prop].push(n);}
+   else{const ant=db[prop][i];const n={...x};(conservar||[]).forEach(k=>{n[k]=ant[k];});db[prop][i]=n;}});
+ };
+ mezclar('categories');mezclar('insumoCategorias');mezclar('pasoCategorias');
+ mezclar('insumos',['stock']);mezclar('pasosCatalogo');
+ mezclar('products',['stockDisponible','stockReservado']);
+ if(d.costos)db.costos={...db.costos,...d.costos};
+ migrar(db);
+ if(!save())return;modal.remove();go();toast('Catálogo importado');
+}
 function celebrar(cual){
  const g=db.config.gifs&&db.config.gifs[cual]&&IDB.cache['gif_'+cual];if(!g)return;
  const o=document.createElement('div');o.className='overlay';o.style.zIndex=70;
@@ -796,9 +888,14 @@ function abrirConfig(){
  o.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Configuración</h3><button type="button" class="link" id="cfg-cerrar" style="font-size:18px">✕</button></div>
   <label>Nombre de la app</label><input type="text" id="cfg-titulo" value="${db.config.titulo||''}">
   <label>Ícono junto al nombre</label><div class="emojipick" id="cfg-iconos">${ICONOS.map(e=>`<button type="button" data-ic="${e}" class="${e===icono?'sel':''}">${e}</button>`).join('')}</div>
-  <label>Estilo</label><select id="cfg-tema"><option value="clasico" ${db.config.tema==='clasico'?'selected':''}>Clásico</option><option value="pastel" ${db.config.tema==='pastel'?'selected':''}>Colores pastel</option><option value="oscuro" ${db.config.tema==='oscuro'?'selected':''}>Oscuro</option></select>
+  <label>Estilo</label><select id="cfg-tema"><option value="clasico" ${db.config.tema==='clasico'?'selected':''}>Clásico</option><option value="pastel" ${db.config.tema==='pastel'?'selected':''}>Colores pastel</option><option value="frio" ${db.config.tema==='frio'?'selected':''}>Colores fríos</option><option value="oscuro" ${db.config.tema==='oscuro'?'selected':''}>Oscuro</option></select>
   <p class="meta" style="margin-top:12px">GIFs de festejo (máx. 3MB cada uno):</p>
   ${gifRow('completo','Al completar un producto (100%)')}${gifRow('venta','Al registrar una venta')}${gifRow('orden','Al crear una orden nueva')}
+  <p class="meta" style="margin-top:12px">Pasar datos entre dispositivos (no incluye GIFs, estilo, nombre ni ícono):</p>
+  <button type="button" class="btn big" id="cfg-export" style="margin-top:6px">Exportar datos</button>
+  <button type="button" class="btn big" id="cfg-imp-todo" style="margin-top:6px">Importar todo</button>
+  <button type="button" class="btn big" id="cfg-imp-cat" style="margin-top:6px">Importar solo catálogo</button>
+  <input type="file" id="cfg-file" accept=".json,application/json" style="display:none">
   <button type="button" class="btn p big" id="cfg-guardar" style="margin-top:14px">Guardar</button>
   <button type="button" class="btn d big" id="cfg-reset" style="margin-top:10px">Restablecer la app…</button></div>`;
  document.body.appendChild(o);
@@ -809,6 +906,11 @@ function abrirConfig(){
  o.querySelectorAll('[data-gif]').forEach(inp=>inp.onchange=()=>{const f=inp.files[0];if(!f)return;if(f.size>3*1024*1024)return toast('Muy pesado, usá uno de menos de 3MB');
   const r=new FileReader();r.onload=()=>{IDB.set('gif_'+inp.dataset.gif,r.result);db.config.gifs[inp.dataset.gif]=true;save();o.remove();abrirConfig();};r.readAsDataURL(f);});
  o.querySelectorAll('[data-gifdel]').forEach(b=>b.onclick=()=>{IDB.del('gif_'+b.dataset.gifdel);db.config.gifs[b.dataset.gifdel]=null;save();o.remove();abrirConfig();});
+ o.querySelector('#cfg-export').onclick=exportarDatos;
+ let modoImp='';const fileEl=o.querySelector('#cfg-file');
+ o.querySelector('#cfg-imp-todo').onclick=()=>{modoImp='todo';fileEl.value='';fileEl.click();};
+ o.querySelector('#cfg-imp-cat').onclick=()=>{modoImp='cat';fileEl.value='';fileEl.click();};
+ fileEl.onchange=()=>{const f=fileEl.files[0];if(!f)return;const r=new FileReader();r.onload=()=>importarDatos(r.result,modoImp,o);r.readAsText(f);};
  o.querySelector('#cfg-reset').onclick=async()=>{
   if(!(await confirmar('⚠️ ¿Querés borrar TODOS tus datos (productos, stock, órdenes, ventas, gastos, notas) y volver a empezar?','Sí, seguir','No')))return;
   if(!(await confirmar('Segunda confirmación: esto <b>no se puede deshacer</b>. ¿Seguro?','Sí, seguir','No')))return;
