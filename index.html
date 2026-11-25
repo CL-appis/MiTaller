@@ -23,6 +23,13 @@ body{margin:0;min-height:100%;background:var(--page);font-family:'Nunito',sans-s
 padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .shell{width:100%;max-width:720px;background:var(--bg);min-height:100vh}
+ .lp-hoja{background:#fff;color:#2e241d;padding:22px 16px;border-radius:10px;font-family:'Nunito',sans-serif}
+.lp-hoja h2{margin:0;text-align:center;color:var(--accent);font-size:24px}.lp-sub{text-align:center;color:#6b6158;margin-top:2px}
+.lp-hoja h3{margin:18px 0 6px;font-size:17px}.lp-hoja h3 span{font-weight:600;color:#6b6158;font-size:14px}
+.lp-hoja table{width:100%;border-collapse:collapse;font-size:14px}.lp-hoja th{background:var(--accent);color:#fff;padding:8px;text-align:left}
+.lp-hoja td{padding:8px}.lp-hoja tr:nth-child(even) td{background:var(--accentsoft)}.lp-hoja .c{text-align:center}
+.lp-pie{margin-top:18px;text-align:center;color:#6b6158;font-size:13px}
+@media print{body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(min-width:760px){body{padding:24px 0}.shell{border-radius:24px;border:1px solid var(--border);overflow:hidden;box-shadow:0 0 50px rgba(46,36,29,.1)}}
 header{position:sticky;top:0;z-index:10;background:var(--bg);padding:16px 18px 0;border-bottom:1px solid var(--border)}
 header h1{font-size:20px;background:linear-gradient(90deg,var(--accent),#c1584b);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
@@ -118,6 +125,7 @@ ordenes:[],ventas:[],gastos:[],
 gastoCategorias:['Insumo','Herramienta','Máquina','Otro'],
 historial:[{id:uid(),tipo:'ajuste',desc:'Carga inicial de stock de ejemplo',fecha:hoy()}],
 notas:[],
+catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true},
 config:{titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}},
 costos:{luz:0,manoObra:0,otros:0,merma:10,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
 };}
@@ -147,6 +155,7 @@ function migrar(d){
  }
  (d.pasosCatalogo||[]).forEach(x=>{if(!x.categoriaId)x.categoriaId=d.pasoCategorias[0].id;});
  if(d.costos&&d.costos.merma==null)d.costos.merma=10;
+ if(!d.catalogo)d.catalogo={titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true};
  (d.products||[]).forEach(pr=>{if(pr.usaMerma==null)pr.usaMerma=false;});
  (d.ordenes||[]).forEach(o=>{
   (o.items||[]).forEach(it=>{
@@ -448,6 +457,8 @@ function renderProductos(){
  </div>
  <h3 class="sect">Catálogo</h3>${renderCatalogo()}
  <div class="card"><form id="f-cat" class="fila"><input type="text" id="cat-n" placeholder="Nueva categoría"><button class="btn">+ Crear</button></form></div>
+ <h3 class="sect">Exportar catálogo / lista de precios</h3>
+ <div class="card" id="exp-wrap">${renderExportar()}</div>
  <h3 class="sect">${editId?'Editar producto':'Nuevo producto'}</h3>
  <div class="card"><form id="f-prod">
   <label>Nombre</label><input type="text" id="pr-n" required>
@@ -459,6 +470,9 @@ function renderProductos(){
    <img id="pr-foto-prev" class="thumbl" style="margin:0">
    <button type="button" class="btn d" id="btn-quitar-foto" title="Sacar esta foto">✕ Quitar foto</button>
   </div>
+  <div class="grid2"><div><label>Tamaño <span class="meta">(opcional, ej: 15x21)</span></label><input type="text" id="pr-tam" placeholder="15x21 cm"></div>
+   <div><label>Cantidad de páginas <span class="meta">(opcional)</span></label><input type="number" id="pr-pag" min="0" placeholder="50"></div></div>
+  <label>Tapa dura</label><select id="pr-tapa"><option value="auto">Automático (si lleva cartón en los insumos)</option><option value="si">Sí, tapa dura</option><option value="no">No</option></select>
   <label>Características</label><textarea id="pr-carac" rows="2" placeholder="Ej: imprimir en ink y luego foil"></textarea>
   <label>Insumos <span class="meta">(tildá los que usa este producto y poné cuántos)</span></label><div id="pr-insumos"></div><button type="button" class="btn" id="btn-add-insumo" title="Agregar una fila de insumo">+ Insumo</button>
   <label style="margin-top:10px">Pasos de producción <span class="meta">(tildá los que aplican)</span></label><div id="pr-pasos"></div><div class="fila"><button type="button" class="btn" id="btn-add-paso" title="Agregar un paso nuevo">+ Paso nuevo</button>
@@ -524,7 +538,121 @@ function renderProductos(){
    <div class="emojipick">${EMOJIS.map(e=>`<button type="button" data-e="${e}">${e}</button>`).join('')}</div>
   </div>
  </div>`;
- wireProductos();
+ wireProductos();wireExportar();
+}
+/* ================= LISTADO DE PRECIOS EXPORTABLE ================= */
+let expExcl=new Set(),expCatsAbiertas=new Set();
+const escH=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tapaDura(p){if(p.tapa==='si')return true;if(p.tapa==='no')return false;return(p.insumos||[]).some(x=>x.on!==false&&/cart[oó]n/i.test((db.insumos.find(i=>i.id===x.insumoId)||{}).nombre||''));}
+function renderExportar(){
+ const cat=db.catalogo;
+ const grupos=db.categories.map(c=>{
+  const ps=db.products.filter(p=>p.categoryId===c.id);if(!ps.length)return '';
+  const conPrecio=ps.filter(p=>p.precioVenta!=null);
+  const todos=conPrecio.length>0&&conPrecio.every(p=>!expExcl.has(p.id));
+  const ab=expCatsAbiertas.has(c.id);
+  return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-ecat="${c.id}"><span class="chev">▾</span>
+   <input type="checkbox" data-ecatchk="${c.id}" ${todos?'checked':''} ${conPrecio.length?'':'disabled'}> ${escH(c.emoji||'')} ${escH(c.name)} <span class="meta">(${conPrecio.filter(p=>!expExcl.has(p.id)).length}/${ps.length})</span></div>
+   <div data-ecatbody="${c.id}" style="display:${ab?'':'none'};padding-left:22px">
+   ${ps.map(p=>`<div class="check-row"><input type="checkbox" data-eprod="${p.id}" ${p.precioVenta==null?'disabled':(expExcl.has(p.id)?'':'checked')}><span class="campo">${escH(p.name)} <span class="meta">${[p.tamano,p.paginas?p.paginas+' págs':'',p.precioVenta!=null?fmt(p.precioVenta):'sin precio (no sale en la lista)'].filter(Boolean).join(' · ')}</span></span></div>`).join('')}
+   </div></div>`;}).join('');
+ return `<p class="meta">Elegí qué categorías o productos incluir. Siempre sale con los precios y datos actuales, así que cuando cambies algo o crees una categoría, volvé a exportar.</p>
+  ${grupos||'<div class="empty">Todavía no hay productos</div>'}
+  <label>Título</label><input type="text" id="ex-titulo" value="${escH(cat.titulo)}">
+  <label>Subtítulo <span class="meta">(ej: mes o validez)</span></label><input type="text" id="ex-sub" value="${escH(cat.subtitulo)}" placeholder="Noviembre 2026">
+  <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="ex-pie" rows="3">${escH(cat.pie)}</textarea>
+  <div class="check-row"><input type="checkbox" id="ex-grilla" ${cat.grilla!==false?'checked':''}><span class="campo">Mostrar como tabla de tamaño × páginas cuando se pueda <span class="meta">(si no, va como lista)</span></span></div>
+  <button type="button" class="btn p big" id="ex-ver" style="margin-top:10px">Vista previa y exportar</button>`;
+}
+function wireExportar(){
+ const w=document.getElementById('exp-wrap');if(!w)return;
+ const refrescar=()=>{w.innerHTML=renderExportar();wireExportar();};
+ w.querySelectorAll('[data-ecat]').forEach(el=>el.onclick=()=>{const id=el.dataset.ecat;if(expCatsAbiertas.has(id))expCatsAbiertas.delete(id);else expCatsAbiertas.add(id);refrescar();});
+ w.querySelectorAll('[data-ecatchk]').forEach(el=>{el.onclick=(e)=>e.stopPropagation();el.onchange=()=>{db.products.filter(p=>p.categoryId===el.dataset.ecatchk&&p.precioVenta!=null).forEach(p=>{if(el.checked)expExcl.delete(p.id);else expExcl.add(p.id);});refrescar();};});
+ w.querySelectorAll('[data-eprod]').forEach(el=>el.onchange=()=>{if(el.checked)expExcl.delete(el.dataset.eprod);else expExcl.add(el.dataset.eprod);refrescar();});
+ const guardarTextos=()=>{db.catalogo.titulo=w.querySelector('#ex-titulo').value;db.catalogo.subtitulo=w.querySelector('#ex-sub').value;db.catalogo.pie=w.querySelector('#ex-pie').value;db.catalogo.grilla=w.querySelector('#ex-grilla').checked;save();};
+ ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla'].forEach(q=>w.querySelector(q).onchange=guardarTextos);
+ w.querySelector('#ex-ver').onclick=()=>{guardarTextos();abrirVistaListado();};
+}
+function armarListado(){
+ const cat=db.catalogo,secs=[];
+ db.categories.forEach(c=>{
+  const ps=db.products.filter(p=>p.categoryId===c.id&&p.precioVenta!=null&&!expExcl.has(p.id));if(!ps.length)return;
+  const claves=ps.map(p=>p.tamano+'|'+p.paginas);
+  const grilla=cat.grilla!==false&&ps.every(p=>p.tamano&&p.paginas)&&new Set(claves).size===ps.length;
+  const duras=ps.filter(tapaDura).length;
+  const nota=duras===ps.length?'Tapa dura':'';
+  if(grilla){
+   const pags=[...new Set(ps.map(p=>p.paginas))].sort((a,b)=>a-b);const tams=[...new Set(ps.map(p=>p.tamano))];
+   secs.push({titulo:c.name,nota,head:['Tamaño',...pags.map(n=>n+' páginas')],rows:tams.map(t=>[t,...pags.map(n=>{const p=ps.find(x=>x.tamano===t&&x.paginas===n);return p?fmt(p.precioVenta):'—';})]),grid:true});
+  }else{
+   const det=(p)=>[p.tamano,p.paginas?p.paginas+' págs':'',duras!==ps.length&&tapaDura(p)?'Tapa dura':'',p.caracteristicas].filter(Boolean).join(' · ');
+   const hayDet=ps.some(p=>det(p));
+   secs.push({titulo:c.name,nota,head:hayDet?['Producto','Detalle','Precio']:['Producto','Precio'],rows:ps.map(p=>hayDet?[p.name,det(p),fmt(p.precioVenta)]:[p.name,fmt(p.precioVenta)]),grid:false});
+  }
+ });
+ return secs;
+}
+function htmlListado(secs){
+ const cat=db.catalogo;
+ return `<div class="lp-hoja"><h2>${escH(cat.titulo)}</h2>${cat.subtitulo?`<div class="lp-sub">${escH(cat.subtitulo)}</div>`:''}
+ ${secs.map(sc=>`<h3>${escH(sc.titulo)}${sc.nota?` <span>· ${escH(sc.nota)}</span>`:''}</h3><table><thead><tr>${sc.head.map((h,i)=>`<th class="${i?'c':''}">${escH(h)}</th>`).join('')}</tr></thead><tbody>${sc.rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${i?'c':''}">${escH(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}
+ ${cat.pie?`<div class="lp-pie">${escH(cat.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
+}
+function canvasListado(secs){
+ const cat=db.catalogo,cs=getComputedStyle(document.body);
+ const acc=cs.getPropertyValue('--accent').trim()||'#d97757',soft=cs.getPropertyValue('--accentsoft').trim()||'#f3ded2',mut='#6b6158',txt='#2e241d';
+ const W=1200,P=60,F='Nunito, Quicksand, Arial, sans-serif';
+ const medir=document.createElement('canvas').getContext('2d');
+ const wrap=(c,t,font,maxW)=>{c.font=font;const out=[];String(t).split('\n').forEach(par=>{let l='';par.split(' ').forEach(w=>{const test=l?l+' '+w:w;if(c.measureText(test).width>maxW&&l){out.push(l);l=w;}else l=test;});out.push(l);});return out;};
+ const dibujar=(c,real)=>{
+  let y=P;
+  c.textAlign='center';c.fillStyle=acc;c.font='bold 52px '+F;
+  wrap(medir,cat.titulo,'bold 52px '+F,W-2*P).forEach(l=>{y+=52;if(real)c.fillText(l,W/2,y);y+=8;});
+  if(cat.subtitulo){c.fillStyle=mut;c.font='28px '+F;y+=14;y+=28;if(real)c.fillText(cat.subtitulo,W/2,y);}
+  y+=40;
+  secs.forEach(sc=>{
+   c.textAlign='left';c.fillStyle=txt;c.font='bold 36px '+F;y+=36;if(real)c.fillText(sc.titulo+(sc.nota?'  ·  '+sc.nota:''),P,y);y+=16;
+   const TW=W-2*P;let ws;
+   if(sc.grid){const f=TW*0.2,r=(TW-f)/(sc.head.length-1);ws=sc.head.map((_,i)=>i?r:f);}
+   else if(sc.head.length===3)ws=[TW*.32,TW*.46,TW*.22];else ws=[TW*.7,TW*.3];
+   const fila=(vals,hdr,idx)=>{
+    const font=(hdr?'bold ':'')+'24px '+F;
+    const lines=vals.map((v,i)=>wrap(medir,v,font,ws[i]-24));
+    const h=Math.max(...lines.map(l=>l.length))*32+22;
+    if(real){
+     c.fillStyle=hdr?acc:(idx%2?soft:'#ffffff');c.fillRect(P,y,TW,h);
+     c.fillStyle=hdr?'#ffffff':txt;c.font=font;let x=P;
+     lines.forEach((ls,i)=>{const centro=i>0&&(sc.grid||i===vals.length-1);c.textAlign=centro?'center':'left';
+      ls.forEach((l,k)=>c.fillText(l,centro?x+ws[i]/2:x+12,y+11+26+k*32));x+=ws[i];});
+    }
+    y+=h;
+   };
+   fila(sc.head,true,0);sc.rows.forEach((r,i)=>fila(r,false,i));
+   if(real){c.strokeStyle=acc;c.lineWidth=2;c.strokeRect(P,y-0,0,0);}
+   y+=44;
+  });
+  if(cat.pie){c.fillStyle=mut;c.textAlign='center';c.font='24px '+F;y+=6;wrap(medir,cat.pie,'24px '+F,W-2*P).forEach(l=>{y+=34;if(real)c.fillText(l,W/2,y);});}
+  y+=P;return y;
+ };
+ const H=Math.ceil(dibujar(medir,false));
+ const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
+ c.fillStyle='#ffffff';c.fillRect(0,0,W,H);dibujar(c,true);return cv;
+}
+function abrirVistaListado(){
+ const secs=armarListado();
+ if(!secs.length)return avisar('No hay productos con precio seleccionados para exportar.');
+ const o=document.createElement('div');o.className='overlay';o.id='lp-overlay';
+ o.innerHTML=`<div class="card" style="max-width:640px"><div class="lp-botones" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <button type="button" class="btn p" id="lp-png">Descargar imagen</button><button type="button" class="btn" id="lp-share" style="display:none">Compartir</button><button type="button" class="btn" id="lp-pdf">PDF / imprimir</button><button type="button" class="btn" id="lp-x">Cerrar</button></div>
+  ${htmlListado(secs)}</div>`;
+ document.body.appendChild(o);
+ o.querySelector('#lp-x').onclick=()=>o.remove();
+ o.querySelector('#lp-pdf').onclick=()=>{toast('En el cuadro de impresión elegí "Guardar como PDF"');setTimeout(()=>window.print(),400);};
+ const nombre='lista-de-precios-'+hoy()+'.png';
+ const obtener=()=>new Promise(res=>canvasListado(secs).toBlob(b=>res(b),'image/png'));
+ o.querySelector('#lp-png').onclick=async()=>{const b=await obtener();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);toast('Imagen descargada');};
+ try{const probe=new File([new Blob(['x'])],'x.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[probe]})){const sb=o.querySelector('#lp-share');sb.style.display='';sb.onclick=async()=>{const b=await obtener();try{await navigator.share({files:[new File([b],nombre,{type:'image/png'})],title:db.catalogo.titulo});}catch(e){}};}}catch(e){}
 }
 function renderCatalogo(){
  if(!db.categories.length)return '<div class="card empty">Creá tu primera categoría abajo</div>';
@@ -615,6 +743,7 @@ function wireProductos(){
   const body={name:document.getElementById('pr-n').value,categoryId:document.getElementById('pr-c').value,
    emoji:emojiSeleccionado,foto:fotoForm,
    caracteristicas:document.getElementById('pr-carac').value,
+   tamano:document.getElementById('pr-tam').value.trim(),paginas:Number(document.getElementById('pr-pag').value)||null,tapa:document.getElementById('pr-tapa').value,
    insumos:insumosForm.filter(x=>x.insumoId),pasos:pasosForm,
    usaLuz,usaManoObra,usaOtros,usaMerma,
    precioVenta:document.getElementById('pr-precio').value?Number(document.getElementById('pr-precio').value):null,
@@ -731,6 +860,7 @@ function cargarEdicion(id){const p=getProd(id);editId=id;pasosForm=JSON.parse(JS
  renderProductos();
  document.getElementById('pr-n').value=p.name;document.getElementById('pr-c').value=p.categoryId;
  document.getElementById('pr-carac').value=p.caracteristicas||'';
+ document.getElementById('pr-tam').value=p.tamano||'';document.getElementById('pr-pag').value=p.paginas||'';document.getElementById('pr-tapa').value=p.tapa||'auto';
  document.getElementById('pr-precio').value=p.precioVenta??'';
  if(fotoForm){document.getElementById('pr-foto-prev').src=fotoForm;document.getElementById('pr-foto-prev-wrap').style.display='flex';}
  recalcGanancia();
