@@ -36,7 +36,8 @@ h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .cat-foto,.cat-ph{flex:0 0 120px;width:120px;height:120px;border-radius:8px}.cat-foto{object-fit:cover}
 .cat-ph{border:2px dashed #c9bdb0;display:flex;align-items:center;justify-content:center;color:#a99d90;font-size:12px}
 .cat-datos{flex:1;min-width:0}.cat-datos h4{margin:0 0 4px;font-size:17px}.cat-chips span{display:inline-block;background:var(--accentsoft);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;margin:0 4px 4px 0}
-.cat-carac{font-size:13.5px;color:#4a4038;margin:2px 0 4px}.cat-precio{font-size:20px;font-weight:800;color:var(--accent)}.cat-int{font-size:12.5px;color:#4a4038;margin-top:6px;line-height:1.5;border-top:1px dashed #d9cfc3;padding-top:5px}
+.cat-carac{font-size:13.5px;color:#4a4038;margin:2px 0 4px}.cat-precio{font-size:20px;font-weight:800;color:var(--accent)}.cat-cols{display:flex;gap:16px;margin-top:6px;font-size:12.5px;color:#4a4038;border-top:1px dashed #d9cfc3;padding-top:5px}.cat-cols>div{flex:1;min-width:0}.cat-cols ul{margin:2px 0 0;padding-left:16px}.cat-cols li{margin-bottom:1px}
+.cat-int{font-size:12.5px;color:#4a4038;margin-top:6px;line-height:1.5;border-top:1px dashed #d9cfc3;padding-top:5px}
 @page{size:A4;margin:12mm}
 @media print{html,body{background:#fff!important;display:block!important;padding:0!important;margin:0!important;min-height:0!important}#lp-overlay .card{width:100%!important}.cat-portada{min-height:240mm;display:flex;flex-direction:column;justify-content:center;break-after:page;page-break-after:always;border:none}.cat-cab{break-after:avoid;page-break-after:avoid}.cat-foto,.cat-ph{flex-basis:150px;width:150px;height:150px}body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(min-width:760px){body{padding:24px 0}.shell{border-radius:24px;border:1px solid var(--border);overflow:hidden;box-shadow:0 0 50px rgba(46,36,29,.1)}}
@@ -621,23 +622,26 @@ function htmlCatalogo(){
  const prod=(p)=>{
   const det=ck('detalle')?[p.tamano,p.paginas?p.paginas+' páginas':'',tapaDura(p)?'Tapa dura':''].filter(Boolean):[];
   const ci=costoInsumosProd(p),ct=p.costoProduccion;
-  const lin=[];
+  const lin=[];let columnas='';
   if(int){
    if(ck('costoIns')&&ci>0)lin.push(`Costo de insumos: <b>${fmt(ci)}</b>`);
    if(ck('costoTotal')&&ct!=null)lin.push(`Costo total: <b>${fmt(ct)}</b>`);
    if(ck('ganancia')&&p.precioVenta!=null&&ct!=null)lin.push(`Ganancia: <b>${fmt(p.precioVenta-ct)}</b>${ct>0?` (${Math.round((p.precioVenta-ct)/ct*100)}% sobre el costo)`:''}`);
    if(ck('stock'))lin.push(`Stock: <b>${p.stockDisponible||0}</b> disponible · ${p.stockReservado||0} reservado`);
    const ins=(p.insumos||[]).filter(x=>x.on!==false).map(x=>{const i=db.insumos.find(n=>n.id===x.insumoId);return i?`${escH(i.nombre)} ×${x.cantidad}`:'';}).filter(Boolean);
-   if(ck('insumos')&&ins.length)lin.push(`Insumos: ${ins.join(', ')}`);
    const pasos=(p.pasos||[]).filter(x=>x.on!==false);
-   if(ck('pasos')&&pasos.length)lin.push(`Pasos: ${pasos.map(x=>escH(x.name)+' ('+x.estMin+' min)').join(' → ')}`);
+   const col=(t,arr)=>`<div><b>${t}</b><ul>${arr.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+   const cols=[];
+   if(ck('insumos')&&ins.length)cols.push(col('Insumos',ins));
+   if(ck('pasos')&&pasos.length)cols.push(col('Pasos',pasos.map(x=>escH(x.name)+' ('+x.estMin+' min)')));
+   if(cols.length)columnas=`<div class="cat-cols">${cols.join('')}</div>`;
   }
   const foto=ck('foto')?(p.foto?`<img class="cat-foto" src="${p.foto}">`:`<div class="cat-ph">Foto</div>`):'';
   return `<div class="cat-prod">${foto}<div class="cat-datos"><h4>${escH(p.name)}</h4>
    ${det.length?`<div class="cat-chips">${det.map(d=>`<span>${escH(d)}</span>`).join('')}</div>`:''}
    ${ck('carac')&&p.caracteristicas?`<div class="cat-carac">${escH(p.caracteristicas).replace(/\n/g,'<br>')}</div>`:''}
    ${p.precioVenta!=null?`<div class="cat-precio">${fmt(p.precioVenta)}</div>`:''}
-   ${lin.length?`<div class="cat-int">${lin.join('<br>')}</div>`:''}</div></div>`;};
+   ${lin.length?`<div class="cat-int">${lin.join('<br>')}</div>`:''}${columnas}</div></div>`;};
  const portada=c.portada?`<div class="cat-portada"><h1>${escH(c.titulo)}</h1>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}${int?'<div class="lp-sub">Uso interno</div>':''}</div>`:`<h2>${escH(c.titulo)}</h2>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}`;
  return `<div class="lp-hoja cat">${portada}${cats.map(x=>`<h3 class="cat-cab">${escH(x.cat.name)}</h3>${x.ps.map(prod).join('')}`).join('')}${c.pie?`<div class="lp-pie">${escH(c.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
 }
