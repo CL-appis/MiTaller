@@ -41,6 +41,7 @@ h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .cat-ph{border:2px dashed #c9bdb0;display:flex;align-items:center;justify-content:center;color:#a99d90;font-size:12px}
 .cat-datos{flex:1;min-width:0}.cat-datos h4{margin:0 0 4px;font-size:17px}.cat-chips span{display:inline-block;background:var(--accentsoft);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;margin:0 4px 4px 0}
 .cat-carac{font-size:13.5px;color:#4a4038;margin:2px 0 4px}.cat-precio{font-size:20px;font-weight:800;color:var(--accent)}.cat-cols{display:flex;gap:16px;margin-top:6px;font-size:12.5px;color:#4a4038;border-top:1px dashed #d9cfc3;padding-top:5px}.cat-cols>div{flex:1;min-width:0}.cat-cols ul{margin:2px 0 0;padding-left:16px}.cat-cols li{margin-bottom:1px}
+.cat-desc{font-size:13px;color:#4a4038;margin:2px 0 4px;line-height:1.5}
 .cat-int{font-size:12.5px;color:#4a4038;margin-top:6px;line-height:1.5;border-top:1px dashed #d9cfc3;padding-top:5px}
 @page{size:A4;margin:12mm}
 @media print{.c2 .cat-foto,.c2 .cat-ph{flex:none!important;width:100%!important;height:55mm!important}html,body{background:#fff!important;display:block!important;padding:0!important;margin:0!important;min-height:0!important}#lp-overlay .card{width:100%!important}.cat-portada{min-height:240mm;display:flex;flex-direction:column;justify-content:center;break-after:page;page-break-after:always;border:none}.cat-cab{break-after:avoid;page-break-after:avoid}.cat-foto,.cat-ph{flex-basis:150px;width:150px;height:150px}body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -141,10 +142,11 @@ historial:[{id:uid(),tipo:'ajuste',desc:'Carga inicial de stock de ejemplo',fech
 notas:[],
 catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true,cat:{modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{},cols:1},logo:null,mostrarLogo:true},
 listadosGuardados:[],
+descuentos:[{desde:10,pct:10},{desde:25,pct:15}],
 config:{titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}},
 costos:{luz:0,manoObra:0,otros:0,merma:10,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
 };}
-function mkProd(id,name,catId,emoji,stock){return{id,name,categoryId:catId,emoji,foto:null,caracteristicas:'',
+function mkProd(id,name,catId,emoji,stock){return{id,name,categoryId:catId,emoji,foto:null,caracteristicas:'',descMode:'general',
 insumos:[],pasos:[
  {id:'a',name:'Imprimir portadas',unit:'lote',loteSize:9999,estMin:20,on:true},
  {id:'b',name:'Laminar portadas',unit:'lote',loteSize:10,estMin:15,on:true},
@@ -174,6 +176,8 @@ function migrar(d){
  if(!d.catalogo.cat)d.catalogo.cat={modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{}};
  if(d.catalogo.cat.cols==null)d.catalogo.cat.cols=1;if(d.catalogo.logo===undefined)d.catalogo.logo=null;if(d.catalogo.mostrarLogo==null)d.catalogo.mostrarLogo=true;
  if(!Array.isArray(d.listadosGuardados))d.listadosGuardados=[];
+ if(!Array.isArray(d.descuentos))d.descuentos=[{desde:10,pct:10},{desde:25,pct:15}];
+ (d.products||[]).forEach(pr=>{if(!pr.descMode)pr.descMode='general';});
  (d.products||[]).forEach(pr=>{if(pr.usaMerma==null)pr.usaMerma=false;});
  (d.ordenes||[]).forEach(o=>{
   (o.items||[]).forEach(it=>{
@@ -462,11 +466,13 @@ function renderStock(){
 }
 
 /* ================= PRODUCTOS ================= */
+let descModeForm='general',descForm=[];
 let editId=null,pasosForm=[],insumosForm=[],fotoForm=null,emojiSeleccionado='📦',realSel=null,vendSel=null,usaLuz=false,usaManoObra=false,usaOtros=false,usaMerma=false,notasLimite=20,insumoCatAbiertas=new Set(),pasoCatAbiertas=new Set();
 const EMOJIS=['📔','📓','📖','📚','📕','📗','📘','📙','🖼️','🎨','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦄','🐝','🦋','🐢','🐬','🐳','🦖','🌸','🌼','🌻','🌷','🌈','⭐','✨','🌙','☀️','☁️','⚡','❄️','🔥','🍀','🌵','🌲','🍎','🍊','🍋','🍉','🍇','🍓','🍒','🍑','🍍','🥑','🍕','🍩','🎂','🍰','🧁','🍭','🍫','☕','🎁','🎈','🎉','🎊','🎀','🎄','🎃','👑','💎','💍','⚽','🏀','🎮','🎲','🎸','🎹','🎭','🎬','📷','📸','🎥','✏️','🖊️','🖌️','🗒️','📎','📌','📍','🔖','🏷️','💼','🚗','🚲','✈️','⛵','🚀','🏠','🏰','⛺','🌍','🗺️','💡','🔑','🔒','⏰','📅','💰','💵','🛍️','👗','👟','💄','🦸','🧙','🧚','👻','☠️','🤖','👽','😀','😎','🥰','🤩','🥳','😻','🦉','🦓','🦒','🐴','🐑','🐐','🦆','🐟','🦈',
 '👶','🧒','👦','👧','🧑','👨','👩','🧓','👴','👵','👫','👬','👭','💑','💒','👰','🤵','🤰','🧑‍🍼','👨‍👩‍👧','👨‍👩‍👧‍👦','🎓','🏆','🥇','🎗️','🕯️','🧸','🍼','👶🏻','🧑‍🎄','🎅','🤶','🥳','🎆','🎇','🧁','🍾','🥂'];
 function renderProductos(){
  const m=document.getElementById('main');
+ if(!editId){descModeForm='general';descForm=[];}
  if(realSel==null)realSel=db.products[0]?.id;
  if(vendSel==null)vendSel=db.products[0]?.id;
  m.innerHTML=`
@@ -518,6 +524,9 @@ function renderProductos(){
    <div><label>% del precio de venta</label><div id="pr-pct-precio" class="big" style="font-size:20px">—</div></div></div>
   <div id="pr-repone" class="meta" style="margin-top:4px"></div>
   <div id="pr-ganancia" style="margin-top:6px;font-weight:700;font-size:16px;color:var(--ok)"></div>
+  <details style="margin-top:10px"><summary style="font-weight:700;cursor:pointer;color:var(--muted)">Descuento por cantidad (precio por mayor)</summary>
+   <div style="padding-top:8px"><select id="pr-dmode"><option value="general" ${descModeForm==='general'?'selected':''}>Usar la regla general (se edita en Listados)</option><option value="propia" ${descModeForm==='propia'?'selected':''}>Reglas propias para este producto</option><option value="ninguno" ${descModeForm==='ninguno'?'selected':''}>Sin descuento por cantidad</option></select>
+   <div id="pr-dtramos" style="margin-top:6px"></div><div id="pr-dprev" class="meta" style="margin-top:6px;line-height:1.6"></div></div></details>
   <div style="display:flex;gap:8px;margin-top:14px">
    <button class="btn p big" type="submit">${editId?'Guardar cambios':'Crear producto'}</button>
    <button type="button" class="btn" id="btn-limpiar">Limpiar</button>
@@ -562,15 +571,31 @@ function renderProductos(){
 let expExcl=new Set(),expCatsAbiertas=new Set();
 const escH=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function tapaDura(p){if(p.tapa==='si')return true;if(p.tapa==='no')return false;return(p.insumos||[]).some(x=>x.on!==false&&/cart[oó]n/i.test((db.insumos.find(i=>i.id===x.insumoId)||{}).nombre||''));}
+function tramosDe(p){if(p.descMode==='ninguno')return[];const t=p.descMode==='propia'?(p.descuentos||[]):db.descuentos;return t.filter(x=>x.desde>0&&x.pct>0).slice().sort((a,b)=>a.desde-b.desde);}
+function tramoPara(p,n){let r=null;tramosDe(p).forEach(t=>{if(n>=t.desde)r=t;});return r;}
+function precioConDesc(pv,t){return t?Math.round(pv*(1-t.pct/100)):pv;}
+function tiempoPasoN(s,n){return s.unit==='lote'?s.estMin*Math.ceil(n/(s.loteSize||n||1)):s.estMin*n;}
+function r2(x){return Math.round(x*100)/100;}
 function costoInsumosProd(p){return(p.insumos||[]).filter(x=>x.on!==false).reduce((a,x)=>a+(x.cantidad||0)*((db.insumos.find(i=>i.id===x.insumoId)||{}).costo||0),0);}
 function renderListados(){
  const m=document.getElementById('main');
  m.innerHTML=`<h3 class="sect">Listados guardados</h3><div class="card" id="gd-wrap">${renderGuardados()}</div>
+ <h3 class="sect">Descuentos por cantidad <span class="meta">(regla general)</span></h3><div class="card" id="desc-wrap">${renderFormDesc()}</div>
  <h3 class="sect">Logo</h3><div class="card" id="logo-wrap">${renderLogoForm()}</div>
  <h3 class="sect">1. ¿Qué incluir?</h3><div class="card" id="sel-wrap">${renderSeleccion()}</div>
  <h3 class="sect">2. Lista de precios <span class="meta">(para clientes)</span></h3><div class="card" id="lp-form">${renderFormLista()}</div>
  <h3 class="sect">3. Catálogo con fotos <span class="meta">(PDF)</span></h3><div class="card" id="cat-form">${renderFormCatalogo()}</div>`;
  wireListados();
+}
+function renderFormDesc(){
+ const t=db.descuentos;
+ const conCosto=db.products.filter(p=>(p.descMode||'general')==='general'&&p.precioVenta!=null&&p.costoProduccion>0);
+ const resumen=(x)=>{if(!(x.desde>0&&x.pct>0)||!conCosto.length)return '';const g=[],a=[],r=[];
+  conCosto.forEach(p=>{const sm=semaforo(precioConDesc(p.precioVenta,x),p.costoProduccion).cls;(sm==='ok'?g:sm==='warn'?a:r).push(p.name);});
+  return `<div class="meta" style="margin:-2px 0 8px 4px">🟢 ${g.length} · 🟡 ${a.length} · 🔴 ${r.length}${r.length?` — revisar: ${escH(r.slice(0,4).join(', '))}${r.length>4?'…':''}`:''}${x.pct<5?' · descuento bajo':''}${x.pct>=40?' · descuento muy alto':''}</div>`;};
+ return `<p class="meta">Es la regla que usan todos los productos que no tengan una propia (cada producto puede tener la suya o ninguna, al editarlo en Productos). El semáforo mira cuánto te queda de ganancia sobre el costo con ese descuento: 🟢 desde 100%, 🟡 entre 50% y 100%, 🔴 menos de 50%.</p>
+  ${t.map((x,i)=>`<div class="fila"><span class="meta">Desde</span><input type="number" min="1" data-gd="${i}" value="${x.desde||''}" style="width:70px"><span class="meta">unidades:</span><input type="number" min="0" max="90" data-gp="${i}" value="${x.pct||''}" style="width:70px"><span class="meta">% de descuento</span><button type="button" class="link" data-grm="${i}">✕</button></div>${resumen(x)}`).join('')||'<div class="meta">Sin tramos: ningún producto con regla general tiene descuento.</div>'}
+  <button type="button" class="btn" id="gd-add">+ Tramo</button>`;
 }
 function renderLogoForm(){
  const c=db.catalogo;
@@ -601,6 +626,7 @@ function renderFormLista(){
  return `<label>Título</label><input type="text" id="ex-titulo" value="${escH(cat.titulo)}">
   <label>Subtítulo <span class="meta">(ej: mes o validez)</span></label><input type="text" id="ex-sub" value="${escH(cat.subtitulo)}" placeholder="Noviembre 2026">
   <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="ex-pie" rows="3">${escH(cat.pie)}</textarea>
+  <div class="check-row"><input type="checkbox" id="ex-desc" ${cat.conDesc?'checked':''}><span class="campo">Incluir precios por cantidad <span class="meta">(la tabla va como lista)</span></span></div>
   <div class="check-row"><input type="checkbox" id="ex-grilla" ${cat.grilla!==false?'checked':''}><span class="campo">Mostrar como tabla de tamaño × páginas cuando se pueda <span class="meta">(si no, va como lista)</span></span></div>
   <p class="meta">No incluye costos ni ganancia. Sale como imagen o PDF.</p>
   <button type="button" class="btn p big" id="ex-ver">Vista previa y exportar</button>`;
@@ -616,6 +642,9 @@ function renderFormCatalogo(){
   <label>Subtítulo</label><input type="text" id="cat-sub" value="${escH(c.subtitulo)}" placeholder="Colección 2026">
   <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="cat-pie" rows="2">${escH(c.pie)}</textarea>
   <div class="check-row"><input type="checkbox" id="cat-portada" ${c.portada?'checked':''}><span class="campo">Incluir portada</span></div>
+  <div class="check-row"><input type="checkbox" id="cat-mayorista" ${c.mayorista?'checked':''}><span class="campo">Mostrar precios por cantidad (mayorista)</span></div>
+  ${int?`<label>Calcular para esta cantidad de unidades <span class="meta">(vacío = no calcular)</span></label><input type="number" id="cat-cant" min="0" value="${c.cantidad||''}" placeholder="Ej: 10">
+  <p class="meta" style="margin-top:2px">Con una cantidad, cada producto muestra el precio con descuento, la venta y la ganancia total, los insumos que vas a usar y el tiempo sumado de los pasos para esa cantidad.</p>`:''}
   <label>Productos por fila</label><select id="cat-cols"><option value="1" ${c.cols===2?'':'selected'}>1 por fila (foto al costado, más detalle)</option><option value="2" ${c.cols===2?'selected':''}>2 por fila (más compacto, menos hojas)</option></select>
   <label>Datos que van en cada producto <span class="meta">(el nombre y el precio de venta siempre salen)</span></label>
   ${CAMPOS_CLI.concat(int?CAMPOS_INT:[]).map(([k,l])=>`<div class="check-row"><input type="checkbox" data-campo="${k}" ${ck(k)?'checked':''}><span class="campo">${l}</span></div>`).join('')}
@@ -631,6 +660,12 @@ function wireListados(){
  w.querySelectorAll('[data-cup],[data-cdn]').forEach(el=>{el.onclick=(e)=>{e.stopPropagation();moverCat(db.categories,el.dataset.cup||el.dataset.cdn,el.dataset.cup?-1:1);save();refrescar();};});
  w.querySelectorAll('[data-pup2],[data-pdn2]').forEach(el=>{el.onclick=()=>{const id=el.dataset.pup2||el.dataset.pdn2,dir=el.dataset.pup2?-1:1;const p=db.products.find(x=>x.id===id);const mismos=db.products.filter(x=>x.categoryId===p.categoryId);const i=mismos.indexOf(p),j=i+dir;if(j<0||j>=mismos.length)return;const a=db.products.indexOf(mismos[i]),b=db.products.indexOf(mismos[j]);[db.products[a],db.products[b]]=[db.products[b],db.products[a]];save();refrescar();};});
  w.querySelectorAll('[data-eprod]').forEach(el=>el.onchange=()=>{if(el.checked)expExcl.delete(el.dataset.eprod);else expExcl.add(el.dataset.eprod);refrescar();});
+ const dw=document.getElementById('desc-wrap');
+ const refD=()=>{dw.innerHTML=renderFormDesc();wireListados();};
+ dw.querySelectorAll('[data-gd]').forEach(el=>el.onchange=()=>{db.descuentos[el.dataset.gd].desde=Number(el.value)||0;save();refD();});
+ dw.querySelectorAll('[data-gp]').forEach(el=>el.onchange=()=>{db.descuentos[el.dataset.gp].pct=Number(el.value)||0;save();refD();});
+ dw.querySelectorAll('[data-grm]').forEach(el=>el.onclick=()=>{db.descuentos.splice(el.dataset.grm,1);save();refD();});
+ dw.querySelector('#gd-add').onclick=()=>{db.descuentos.push({desde:50,pct:20});save();refD();};
  const lw=document.getElementById('logo-wrap');
  const refLogo=()=>{lw.innerHTML=renderLogoForm();wireListados();};
  lw.querySelector('#logo-file').onchange=async(e)=>{const f=e.target.files[0];if(!f)return;try{db.catalogo.logo=await comprimirLogo(f);if(save())toast('Logo guardado');refLogo();}catch(x){toast('No se pudo leer esa imagen');}};
@@ -640,7 +675,7 @@ function wireListados(){
  const refG=()=>{gw.innerHTML=renderGuardados();wireListados();};
  gw.querySelector('#gd-form').onsubmit=(e)=>{e.preventDefault();const nombre=gw.querySelector('#gd-nombre').value.trim();if(!nombre)return;
   guardarTextosActuales();
-  const copia={id:uid(),nombre,excl:[...expExcl],lista:{titulo:db.catalogo.titulo,subtitulo:db.catalogo.subtitulo,pie:db.catalogo.pie,grilla:db.catalogo.grilla},cat:JSON.parse(JSON.stringify(db.catalogo.cat))};
+  const copia={id:uid(),nombre,excl:[...expExcl],lista:{titulo:db.catalogo.titulo,subtitulo:db.catalogo.subtitulo,pie:db.catalogo.pie,grilla:db.catalogo.grilla,conDesc:db.catalogo.conDesc},cat:JSON.parse(JSON.stringify(db.catalogo.cat))};
   const ex=db.listadosGuardados.findIndex(x=>x.nombre.toLowerCase()===nombre.toLowerCase());
   if(ex>=0)db.listadosGuardados[ex]={...copia,id:db.listadosGuardados[ex].id};else db.listadosGuardados.push(copia);
   save();toast('Listado guardado');refG();};
@@ -648,14 +683,15 @@ function wireListados(){
   expExcl=new Set(x.excl.filter(id=>db.products.some(p=>p.id===id)));Object.assign(db.catalogo,x.lista);db.catalogo.cat=JSON.parse(JSON.stringify(x.cat));save();toast('Listado abierto');renderListados();});
  gw.querySelectorAll('[data-gdel]').forEach(el=>el.onclick=async()=>{if(await confirmar('¿Borrar este listado guardado?')){db.listadosGuardados=db.listadosGuardados.filter(g=>g.id!==el.dataset.gdel);save();refG();}});
  const f=document.getElementById('lp-form');
- const guardarLista=()=>{db.catalogo.titulo=f.querySelector('#ex-titulo').value;db.catalogo.subtitulo=f.querySelector('#ex-sub').value;db.catalogo.pie=f.querySelector('#ex-pie').value;db.catalogo.grilla=f.querySelector('#ex-grilla').checked;save();};
- ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla'].forEach(q=>f.querySelector(q).onchange=guardarLista);
+ const guardarLista=()=>{db.catalogo.titulo=f.querySelector('#ex-titulo').value;db.catalogo.subtitulo=f.querySelector('#ex-sub').value;db.catalogo.pie=f.querySelector('#ex-pie').value;db.catalogo.grilla=f.querySelector('#ex-grilla').checked;db.catalogo.conDesc=f.querySelector('#ex-desc').checked;save();};
+ ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla','#ex-desc'].forEach(q=>f.querySelector(q).onchange=guardarLista);
  f.querySelector('#ex-ver').onclick=()=>{guardarLista();abrirVistaListado();};
  const g=document.getElementById('cat-form'),c=db.catalogo.cat;
  guardarTextosActuales=()=>{guardarLista();guardarCat();};
- const guardarCat=()=>{c.titulo=g.querySelector('#cat-titulo').value;c.subtitulo=g.querySelector('#cat-sub').value;c.pie=g.querySelector('#cat-pie').value;c.portada=g.querySelector('#cat-portada').checked;c.cols=Number(g.querySelector('#cat-cols').value)||1;g.querySelectorAll('[data-campo]').forEach(x=>c.campos[x.dataset.campo]=x.checked);save();};
- ['#cat-titulo','#cat-sub','#cat-pie','#cat-portada','#cat-cols'].forEach(q=>g.querySelector(q).onchange=guardarCat);
+ const guardarCat=()=>{c.titulo=g.querySelector('#cat-titulo').value;c.subtitulo=g.querySelector('#cat-sub').value;c.pie=g.querySelector('#cat-pie').value;c.portada=g.querySelector('#cat-portada').checked;c.cols=Number(g.querySelector('#cat-cols').value)||1;c.mayorista=g.querySelector('#cat-mayorista').checked;{const cn=g.querySelector('#cat-cant');if(cn)c.cantidad=Number(cn.value)||0;}g.querySelectorAll('[data-campo]').forEach(x=>c.campos[x.dataset.campo]=x.checked);save();};
+ ['#cat-titulo','#cat-sub','#cat-pie','#cat-portada','#cat-cols','#cat-mayorista'].forEach(q=>g.querySelector(q).onchange=guardarCat);
  g.querySelectorAll('[data-campo]').forEach(x=>x.onchange=guardarCat);
+ {const cn=g.querySelector('#cat-cant');if(cn)cn.onchange=guardarCat;}
  g.querySelector('#cat-modo').onchange=(e)=>{guardarCat();c.modo=e.target.value;save();g.innerHTML=renderFormCatalogo();wireListados();};
  g.querySelector('#cat-ver').onclick=()=>{guardarCat();abrirVistaCatalogo();};
 }
@@ -670,14 +706,18 @@ function htmlCatalogo(){
   if(int){
    if(ck('costoIns')&&ci>0)lin.push(`Costo de insumos: <b>${fmt(ci)}</b>`);
    if(ck('costoTotal')&&ct!=null)lin.push(`Costo total: <b>${fmt(ct)}</b>`);
-   if(ck('ganancia')&&p.precioVenta!=null&&ct!=null)lin.push(`Ganancia: <b>${fmt(p.precioVenta-ct)}</b>${ct>0?` (${Math.round((p.precioVenta-ct)/ct*100)}% sobre el costo)`:''}`);
+   if(ck('ganancia')&&p.precioVenta!=null&&ct!=null)lin.push(`${semaforo(p.precioVenta,ct).ico} Ganancia: <b>${fmt(p.precioVenta-ct)}</b>${ct>0?` (${Math.round((p.precioVenta-ct)/ct*100)}% sobre el costo)`:''}`);
    if(ck('stock'))lin.push(`Stock: <b>${p.stockDisponible||0}</b> disponible · ${p.stockReservado||0} reservado`);
-   const ins=(p.insumos||[]).filter(x=>x.on!==false).map(x=>{const i=db.insumos.find(n=>n.id===x.insumoId);return i?`${escH(i.nombre)} ×${x.cantidad}`:'';}).filter(Boolean);
+   const N=Number(c.cantidad)||0;
+   const ins=(p.insumos||[]).filter(x=>x.on!==false).map(x=>{const i=db.insumos.find(n=>n.id===x.insumoId);return i?`${escH(i.nombre)} ×${r2(x.cantidad*(N||1))}${N?` <span style="color:#8a7a6d">(${fmt(x.cantidad*N*(i.costo||0))})</span>`:''}`:'';}).filter(Boolean);
+   if(N>0&&p.precioVenta!=null){const t=tramoPara(p,N),pu=precioConDesc(p.precioVenta,t),venta=pu*N;const tp=(p.pasos||[]).filter(x=>x.on!==false).reduce((a,x)=>a+tiempoPasoN(x,N),0);
+    const costoN=ct!=null?ct*N:null,gan=costoN!=null?venta-costoN:null,sm=costoN?semaforo(pu,ct):{ico:''};
+    lin.push(`<b>Para ${N} unidades:</b> ${fmt(pu)} c/u ${t?`(${t.pct}% de descuento)`:'(sin descuento)'} → venta total <b>${fmt(venta)}</b>${costoN!=null?` · costo total <b>${fmt(costoN)}</b> · ${sm.ico} ganancia <b>${fmt(gan)}</b> (${costoN>0?Math.round(gan/costoN*100):0}% sobre el costo)`:''}<br>Tiempo total de pasos: <b>${fmtMin(tp)}</b>`);}
    const pasos=(p.pasos||[]).filter(x=>x.on!==false);
    const col=(t,arr)=>`<div><b>${t}</b><ul>${arr.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
    const cols=[];
-   if(ck('insumos')&&ins.length)cols.push(col('Insumos',ins));
-   if(ck('pasos')&&pasos.length)cols.push(col('Pasos',pasos.map(x=>escH(x.name)+' ('+x.estMin+' min)')));
+   if(ck('insumos')&&ins.length)cols.push(col(N?`Insumos para ${N} u.`:'Insumos',ins));
+   if(ck('pasos')&&pasos.length)cols.push(col(N?`Pasos para ${N} u.`:'Pasos',pasos.map(x=>escH(x.name)+' ('+fmtMin(N?tiempoPasoN(x,N):x.estMin)+')')));
    if(cols.length)columnas=`<div class="cat-cols">${cols.join('')}</div>`;
   }
   const foto=ck('foto')?(p.foto?`<img class="cat-foto" src="${p.foto}">`:`<div class="cat-ph">Foto</div>`):'';
@@ -685,6 +725,7 @@ function htmlCatalogo(){
    ${det.length?`<div class="cat-chips">${det.map(d=>`<span>${escH(d)}</span>`).join('')}</div>`:''}
    ${ck('carac')&&p.caracteristicas?`<div class="cat-carac">${escH(p.caracteristicas).replace(/\n/g,'<br>')}</div>`:''}
    ${p.precioVenta!=null?`<div class="cat-precio">${fmt(p.precioVenta)}</div>`:''}
+   ${c.mayorista&&p.precioVenta!=null&&tramosDe(p).length?`<div class="cat-desc">${tramosDe(p).map(t=>`Desde ${t.desde} unidades: <b>${fmt(precioConDesc(p.precioVenta,t))}</b> c/u${int&&p.costoProduccion>0?' '+semaforo(precioConDesc(p.precioVenta,t),p.costoProduccion).ico:''}`).join('<br>')}</div>`:''}
    ${lin.length?`<div class="cat-int">${lin.join('<br>')}</div>`:''}${columnas}</div></div>`;};
  const logo=(db.catalogo.logo&&db.catalogo.mostrarLogo!==false)?`<img class="lp-logo" src="${db.catalogo.logo}">`:'';
  const portada=c.portada?`<div class="cat-portada">${logo}<h1>${escH(c.titulo)}</h1>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}${int?'<div class="lp-sub">Uso interno</div>':''}</div>`:`${logo}<h2>${escH(c.titulo)}</h2>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}`;
@@ -703,7 +744,7 @@ function armarListado(){
  db.categories.forEach(c=>{
   const ps=db.products.filter(p=>p.categoryId===c.id&&p.precioVenta!=null&&!expExcl.has(p.id));if(!ps.length)return;
   const claves=ps.map(p=>p.tamano+'|'+p.paginas);
-  const grilla=cat.grilla!==false&&ps.every(p=>p.tamano&&p.paginas)&&new Set(claves).size===ps.length;
+  const grilla=cat.grilla!==false&&!cat.conDesc&&ps.every(p=>p.tamano&&p.paginas)&&new Set(claves).size===ps.length;
   const duras=ps.filter(tapaDura).length;
   const nota=duras===ps.length?'Tapa dura':'';
   if(grilla){
@@ -712,7 +753,10 @@ function armarListado(){
   }else{
    const det=(p)=>[p.tamano,p.paginas?p.paginas+' págs':'',duras!==ps.length&&tapaDura(p)?'Tapa dura':'',p.caracteristicas].filter(Boolean).join(' · ');
    const hayDet=ps.some(p=>det(p));
-   secs.push({titulo:c.name,nota,head:hayDet?['Producto','Detalle','Precio']:['Producto','Precio'],rows:ps.map(p=>hayDet?[p.name,det(p),fmt(p.precioVenta)]:[p.name,fmt(p.precioVenta)]),grid:false});
+   const por=(p)=>tramosDe(p).map(t=>`Desde ${t.desde}: ${fmt(precioConDesc(p.precioVenta,t))}`).join('\n');
+   const hayDesc=cat.conDesc&&ps.some(p=>por(p));
+   const head=['Producto'];if(hayDet)head.push('Detalle');head.push('Precio');if(hayDesc)head.push('Por cantidad (c/u)');
+   secs.push({titulo:c.name,nota,head,rows:ps.map(p=>{const r=[p.name];if(hayDet)r.push(det(p));r.push(fmt(p.precioVenta));if(hayDesc)r.push(por(p)||'—');return r;}),grid:false});
   }
  });
  return secs;
@@ -721,7 +765,7 @@ function htmlListado(secs){
  const cat=db.catalogo;
  const logo=(cat.logo&&cat.mostrarLogo!==false)?`<img class="lp-logo" src="${cat.logo}">`:'';
  return `<div class="lp-hoja">${logo}<h2>${escH(cat.titulo)}</h2>${cat.subtitulo?`<div class="lp-sub">${escH(cat.subtitulo)}</div>`:''}
- ${secs.map(sc=>`<h3>${escH(sc.titulo)}${sc.nota?` <span>· ${escH(sc.nota)}</span>`:''}</h3><table><thead><tr>${sc.head.map((h,i)=>`<th class="${i?'c':''}">${escH(h)}</th>`).join('')}</tr></thead><tbody>${sc.rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${i?'c':''}">${escH(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}
+ ${secs.map(sc=>`<h3>${escH(sc.titulo)}${sc.nota?` <span>· ${escH(sc.nota)}</span>`:''}</h3><table><thead><tr>${sc.head.map((h,i)=>`<th class="${i?'c':''}">${escH(h)}</th>`).join('')}</tr></thead><tbody>${sc.rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${i?'c':''}">${escH(v).replace(/\n/g,'<br>')}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}
  ${cat.pie?`<div class="lp-pie">${escH(cat.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
 }
 function canvasListado(secs,logoImg){
@@ -741,7 +785,7 @@ function canvasListado(secs,logoImg){
    c.textAlign='left';c.fillStyle=txt;c.font='bold 36px '+F;y+=36;if(real)c.fillText(sc.titulo+(sc.nota?'  ·  '+sc.nota:''),P,y);y+=16;
    const TW=W-2*P;let ws;
    if(sc.grid){const f=TW*0.2,r=(TW-f)/(sc.head.length-1);ws=sc.head.map((_,i)=>i?r:f);}
-   else if(sc.head.length===3)ws=[TW*.32,TW*.46,TW*.22];else ws=[TW*.7,TW*.3];
+   else if(sc.head.length===4)ws=[TW*.26,TW*.32,TW*.16,TW*.26];else if(sc.head.length===3)ws=[TW*.32,TW*.46,TW*.22];else ws=[TW*.7,TW*.3];
    const fila=(vals,hdr,idx)=>{
     const font=(hdr?'bold ':'')+'24px '+F;
     const lines=vals.map((v,i)=>wrap(medir,v,font,ws[i]-24));
@@ -749,7 +793,7 @@ function canvasListado(secs,logoImg){
     if(real){
      c.fillStyle=hdr?acc:(idx%2?soft:'#ffffff');c.fillRect(P,y,TW,h);
      c.fillStyle=hdr?'#ffffff':txt;c.font=font;let x=P;
-     lines.forEach((ls,i)=>{const centro=i>0&&(sc.grid||i===vals.length-1);c.textAlign=centro?'center':'left';
+     lines.forEach((ls,i)=>{const centro=i>0&&(sc.grid||i>=2||vals.length===2);c.textAlign=centro?'center':'left';
       ls.forEach((l,k)=>c.fillText(l,centro?x+ws[i]/2:x+12,y+11+26+k*32));x+=ws[i];});
     }
     y+=h;
@@ -868,6 +912,7 @@ function wireProductos(){
   const costoAuto=costoTotalCalculado();
   const body={name:document.getElementById('pr-n').value,categoryId:document.getElementById('pr-c').value,
    emoji:emojiSeleccionado,foto:fotoForm,
+   descMode:descModeForm,descuentos:descForm.filter(x=>x.desde>0&&x.pct>0),
    caracteristicas:document.getElementById('pr-carac').value,
    tamano:document.getElementById('pr-tam').value.trim(),paginas:Number(document.getElementById('pr-pag').value)||null,tapa:document.getElementById('pr-tapa').value,
    insumos:insumosForm.filter(x=>x.insumoId),pasos:pasosForm,
@@ -880,7 +925,8 @@ function wireProductos(){
   else{db.products.push({id:uid(),...body,stockDisponible:0,stockReservado:0});toast('Producto creado');}
   editId=null;pasosForm=[];insumosForm=[];fotoForm=null;emojiSeleccionado='📦';usaLuz=usaManoObra=usaOtros=usaMerma=false;save();renderProductos();
  };
- recalcGanancia();
+ recalcGanancia();renderDescForm();
+ document.getElementById('pr-dmode').onchange=(e)=>{descModeForm=e.target.value;if(descModeForm==='propia'&&!descForm.length)descForm=db.descuentos.map(x=>({...x}));renderDescForm();};
  document.getElementById('pr-precio').oninput=recalcGanancia;
  document.getElementById('pr-pct').oninput=(e)=>{const pc=costoTotalCalculado();const v=e.target.value;if(v===''||pc<=0){return;}document.getElementById('pr-precio').value=Math.round(pc*(1+Number(v)/100));recalcGanancia();};
 
@@ -926,6 +972,29 @@ function semaforo(pv,pc){
  if(p>=50)return{ico:'🟡',color:'var(--warn)',cls:'warn'};
  return{ico:'🔴',color:'var(--bad)',cls:'bad'};
 }
+function renderDescForm(){
+ const c=document.getElementById('pr-dtramos');if(!c)return;
+ if(descModeForm==='propia'){
+  c.innerHTML=descForm.map((t,i)=>`<div class="fila"><span class="meta">Desde</span><input type="number" min="1" data-dd="${i}" value="${t.desde||''}" style="width:70px"><span class="meta">unidades:</span><input type="number" min="0" max="90" data-dp="${i}" value="${t.pct||''}" style="width:70px"><span class="meta">% de descuento</span><button type="button" class="link" data-drm="${i}">✕</button></div>`).join('')+`<button type="button" class="btn" id="pr-dadd">+ Tramo</button>`;
+  c.querySelectorAll('[data-dd]').forEach(el=>el.oninput=()=>{descForm[el.dataset.dd].desde=Number(el.value)||0;actualizarDescPreview();});
+  c.querySelectorAll('[data-dp]').forEach(el=>el.oninput=()=>{descForm[el.dataset.dp].pct=Number(el.value)||0;actualizarDescPreview();});
+  c.querySelectorAll('[data-drm]').forEach(el=>el.onclick=()=>{descForm.splice(el.dataset.drm,1);renderDescForm();});
+  c.querySelector('#pr-dadd').onclick=()=>{descForm.push({desde:10,pct:10});renderDescForm();};
+ }else c.innerHTML='';
+ actualizarDescPreview();
+}
+function lineaDesc(pv,pc,t){const pu=precioConDesc(pv,t),sm=semaforo(pu,pc);const g=pc>0?Math.round((pu-pc)/pc*100):null;
+ const aviso=t.pct<5?' · descuento bajo':t.pct>=40?' · descuento muy alto':'';
+ return `${sm.ico} Desde ${t.desde} unid.: <b>${fmt(pu)}</b> c/u (${t.pct}% menos)${g!=null?` · ganancia ${g}% sobre el costo`:''}${aviso}`;}
+function actualizarDescPreview(){
+ const el=document.getElementById('pr-dprev');if(!el)return;
+ const pv=Number(document.getElementById('pr-precio').value)||0,pc=costoTotalCalculado();
+ const tr=descModeForm==='propia'?descForm:descModeForm==='general'?db.descuentos:[];
+ const ok=tr.filter(x=>x.desde>0&&x.pct>0).slice().sort((a,b)=>a.desde-b.desde);
+ if(descModeForm==='ninguno'){el.textContent='Este producto no tiene descuento por cantidad.';return;}
+ if(!pv){el.textContent='Poné el precio de venta para ver cómo queda cada tramo.';return;}
+ el.innerHTML=ok.length?ok.map(t=>lineaDesc(pv,pc,t)).join('<br>'):'No hay tramos cargados.';
+}
 function recalcGanancia(){
  const pv=Number(document.getElementById('pr-precio').value)||0;
  const pc=costoTotalCalculado();
@@ -937,6 +1006,7 @@ function recalcGanancia(){
  if(pctEl&&document.activeElement!==pctEl)pctEl.value=(pc>0&&pv)?Math.round((pv-pc)/pc*100):'';
  document.getElementById('pr-pct-precio').textContent=(pv>0&&pc>0)?Math.round((pv-pc)/pv*100)+'%':'—';
  document.getElementById('pr-repone').textContent=(pv>0&&pc>0)?`Una venta repone ${(pv/pc).toFixed(1).replace('.0','')} producto(s) de lo que cuesta fabricarlo.`:'';
+ actualizarDescPreview();
  const d=desgloseCostoIndirecto(),el=document.getElementById('pr-desglose');
  if(el){
   const partes=[];
@@ -986,6 +1056,7 @@ function cargarEdicion(id){const p=getProd(id);editId=id;pasosForm=JSON.parse(JS
  renderProductos();
  document.getElementById('pr-n').value=p.name;document.getElementById('pr-c').value=p.categoryId;
  document.getElementById('pr-carac').value=p.caracteristicas||'';
+ descModeForm=p.descMode||'general';descForm=JSON.parse(JSON.stringify(p.descuentos||[]));document.getElementById('pr-dmode').value=descModeForm;renderDescForm();
  document.getElementById('pr-tam').value=p.tamano||'';document.getElementById('pr-pag').value=p.paginas||'';document.getElementById('pr-tapa').value=p.tapa||'auto';
  document.getElementById('pr-precio').value=p.precioVenta??'';
  if(fotoForm){document.getElementById('pr-foto-prev').src=fotoForm;document.getElementById('pr-foto-prev-wrap').style.display='flex';}
