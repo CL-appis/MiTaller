@@ -29,7 +29,16 @@ h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .lp-hoja table{width:100%;border-collapse:collapse;font-size:14px}.lp-hoja th{background:var(--accent);color:#fff;padding:8px;text-align:left}
 .lp-hoja td{padding:8px}.lp-hoja tr:nth-child(even) td{background:var(--accentsoft)}.lp-hoja .c{text-align:center}
 .lp-pie{margin-top:18px;text-align:center;color:#6b6158;font-size:13px}
-@media print{body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+.cat-portada{text-align:center;padding:60px 0;border-bottom:1px solid #e6ddd3;margin-bottom:10px}.cat-portada h1{color:var(--accent);margin:0;font-size:32px}
+.cat-cab{margin:22px 0 4px;padding-bottom:4px;border-bottom:2px solid var(--accent);color:var(--accent)}
+.cat-prod{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid #eee5db;break-inside:avoid;page-break-inside:avoid}
+.cat-foto,.cat-ph{flex:0 0 120px;width:120px;height:120px;border-radius:8px}.cat-foto{object-fit:cover}
+.cat-ph{border:2px dashed #c9bdb0;display:flex;align-items:center;justify-content:center;color:#a99d90;font-size:12px}
+.cat-datos{flex:1;min-width:0}.cat-datos h4{margin:0 0 4px;font-size:17px}.cat-chips span{display:inline-block;background:var(--accentsoft);border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;margin:0 4px 4px 0}
+.cat-carac{font-size:13.5px;color:#4a4038;margin:2px 0 4px}.cat-precio{font-size:20px;font-weight:800;color:var(--accent)}.cat-int{font-size:12.5px;color:#4a4038;margin-top:6px;line-height:1.5;border-top:1px dashed #d9cfc3;padding-top:5px}
+@page{size:A4;margin:12mm}
+@media print{html,body{background:#fff!important;display:block!important;padding:0!important;margin:0!important;min-height:0!important}#lp-overlay .card{width:100%!important}.cat-portada{min-height:240mm;display:flex;flex-direction:column;justify-content:center;break-after:page;page-break-after:always;border:none}.cat-cab{break-after:avoid;page-break-after:avoid}.cat-foto,.cat-ph{flex-basis:150px;width:150px;height:150px}body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(min-width:760px){body{padding:24px 0}.shell{border-radius:24px;border:1px solid var(--border);overflow:hidden;box-shadow:0 0 50px rgba(46,36,29,.1)}}
 header{position:sticky;top:0;z-index:10;background:var(--bg);padding:16px 18px 0;border-bottom:1px solid var(--border)}
 header h1{font-size:20px;background:linear-gradient(90deg,var(--accent),#c1584b);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
@@ -125,7 +134,7 @@ ordenes:[],ventas:[],gastos:[],
 gastoCategorias:['Insumo','Herramienta','Máquina','Otro'],
 historial:[{id:uid(),tipo:'ajuste',desc:'Carga inicial de stock de ejemplo',fecha:hoy()}],
 notas:[],
-catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true},
+catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true,cat:{modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{}}},
 config:{titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}},
 costos:{luz:0,manoObra:0,otros:0,merma:10,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
 };}
@@ -156,6 +165,7 @@ function migrar(d){
  (d.pasosCatalogo||[]).forEach(x=>{if(!x.categoriaId)x.categoriaId=d.pasoCategorias[0].id;});
  if(d.costos&&d.costos.merma==null)d.costos.merma=10;
  if(!d.catalogo)d.catalogo={titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true};
+ if(!d.catalogo.cat)d.catalogo.cat={modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{}};
  (d.products||[]).forEach(pr=>{if(pr.usaMerma==null)pr.usaMerma=false;});
  (d.ordenes||[]).forEach(o=>{
   (o.items||[]).forEach(it=>{
@@ -238,12 +248,12 @@ function planOrden(o){
 }
 
 /* ================= UI: TABS ================= */
-const TABS=[['produccion','Producción'],['stock','Stock'],['productos','Productos'],['finanzas','Finanzas']];
+const TABS=[['produccion','Producción'],['stock','Stock'],['productos','Productos'],['finanzas','Finanzas'],['listados','Listados']];
 let tabActual='produccion';
 let ordenAbiertas=new Set(),catAbiertas=new Set(),prodAbiertos=new Set(),periodoFin='mes',statsAbierta=false,ultimoSnapshot=null;
 function renderTabs(){document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab ${k===tabActual?'on':''}" data-tab="${k}">${l}</button>`).join('');
  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tabActual=b.dataset.tab;go();});}
-function go(){renderTabs();periodoFin='mes';statsAbierta=false;ordenAbiertas.clear();catAbiertas.clear();prodAbiertos.clear();insumoCatAbiertas.clear();pasoCatAbiertas.clear();({produccion:renderProduccion,stock:renderStock,productos:renderProductos,finanzas:renderFinanzas})[tabActual]();}
+function go(){renderTabs();periodoFin='mes';statsAbierta=false;ordenAbiertas.clear();catAbiertas.clear();prodAbiertos.clear();insumoCatAbiertas.clear();pasoCatAbiertas.clear();({produccion:renderProduccion,stock:renderStock,productos:renderProductos,finanzas:renderFinanzas,listados:renderListados})[tabActual]();}
 
 /* ================= PRODUCCIÓN ================= */
 function renderProduccion(){
@@ -457,8 +467,7 @@ function renderProductos(){
  </div>
  <h3 class="sect">Catálogo</h3>${renderCatalogo()}
  <div class="card"><form id="f-cat" class="fila"><input type="text" id="cat-n" placeholder="Nueva categoría"><button class="btn">+ Crear</button></form></div>
- <h3 class="sect">Exportar catálogo / lista de precios</h3>
- <div class="card" id="exp-wrap">${renderExportar()}</div>
+
  <h3 class="sect">${editId?'Editar producto':'Nuevo producto'}</h3>
  <div class="card"><form id="f-prod">
   <label>Nombre</label><input type="text" id="pr-n" required>
@@ -538,41 +547,107 @@ function renderProductos(){
    <div class="emojipick">${EMOJIS.map(e=>`<button type="button" data-e="${e}">${e}</button>`).join('')}</div>
   </div>
  </div>`;
- wireProductos();wireExportar();
+ wireProductos();
 }
 /* ================= LISTADO DE PRECIOS EXPORTABLE ================= */
 let expExcl=new Set(),expCatsAbiertas=new Set();
 const escH=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function tapaDura(p){if(p.tapa==='si')return true;if(p.tapa==='no')return false;return(p.insumos||[]).some(x=>x.on!==false&&/cart[oó]n/i.test((db.insumos.find(i=>i.id===x.insumoId)||{}).nombre||''));}
-function renderExportar(){
- const cat=db.catalogo;
+function costoInsumosProd(p){return(p.insumos||[]).filter(x=>x.on!==false).reduce((a,x)=>a+(x.cantidad||0)*((db.insumos.find(i=>i.id===x.insumoId)||{}).costo||0),0);}
+function renderListados(){
+ const m=document.getElementById('main');
+ m.innerHTML=`<h3 class="sect">1. ¿Qué incluir?</h3><div class="card" id="sel-wrap">${renderSeleccion()}</div>
+ <h3 class="sect">2. Lista de precios <span class="meta">(para clientes)</span></h3><div class="card" id="lp-form">${renderFormLista()}</div>
+ <h3 class="sect">3. Catálogo con fotos <span class="meta">(PDF)</span></h3><div class="card" id="cat-form">${renderFormCatalogo()}</div>`;
+ wireListados();
+}
+function renderSeleccion(){
  const grupos=db.categories.map(c=>{
   const ps=db.products.filter(p=>p.categoryId===c.id);if(!ps.length)return '';
-  const conPrecio=ps.filter(p=>p.precioVenta!=null);
-  const todos=conPrecio.length>0&&conPrecio.every(p=>!expExcl.has(p.id));
-  const ab=expCatsAbiertas.has(c.id);
+  const todos=ps.every(p=>!expExcl.has(p.id));const ab=expCatsAbiertas.has(c.id);
   return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-ecat="${c.id}"><span class="chev">▾</span>
-   <input type="checkbox" data-ecatchk="${c.id}" ${todos?'checked':''} ${conPrecio.length?'':'disabled'}> ${escH(c.emoji||'')} ${escH(c.name)} <span class="meta">(${conPrecio.filter(p=>!expExcl.has(p.id)).length}/${ps.length})</span></div>
-   <div data-ecatbody="${c.id}" style="display:${ab?'':'none'};padding-left:22px">
-   ${ps.map(p=>`<div class="check-row"><input type="checkbox" data-eprod="${p.id}" ${p.precioVenta==null?'disabled':(expExcl.has(p.id)?'':'checked')}><span class="campo">${escH(p.name)} <span class="meta">${[p.tamano,p.paginas?p.paginas+' págs':'',p.precioVenta!=null?fmt(p.precioVenta):'sin precio (no sale en la lista)'].filter(Boolean).join(' · ')}</span></span></div>`).join('')}
+   <input type="checkbox" data-ecatchk="${c.id}" ${todos?'checked':''}> ${escH(c.emoji||'')} ${escH(c.name)} <span class="meta">(${ps.filter(p=>!expExcl.has(p.id)).length}/${ps.length})</span></div>
+   <div style="display:${ab?'':'none'};padding-left:22px">
+   ${ps.map(p=>`<div class="check-row"><input type="checkbox" data-eprod="${p.id}" ${expExcl.has(p.id)?'':'checked'}><span class="campo">${escH(p.name)} <span class="meta">${[p.tamano,p.paginas?p.paginas+' págs':'',p.precioVenta!=null?fmt(p.precioVenta):'sin precio'].filter(Boolean).join(' · ')}</span></span></div>`).join('')}
    </div></div>`;}).join('');
- return `<p class="meta">Elegí qué categorías o productos incluir. Siempre sale con los precios y datos actuales, así que cuando cambies algo o crees una categoría, volvé a exportar.</p>
-  ${grupos||'<div class="empty">Todavía no hay productos</div>'}
-  <label>Título</label><input type="text" id="ex-titulo" value="${escH(cat.titulo)}">
+ return `<p class="meta">Tildá las categorías o productos que van a salir (tocá una categoría para ver sus productos). Los productos sin precio no salen en lo que es para clientes. Siempre se usan los datos actuales: si cambiás algo, volvé a exportar.</p>${grupos||'<div class="empty">Todavía no hay productos</div>'}`;
+}
+function renderFormLista(){
+ const cat=db.catalogo;
+ return `<label>Título</label><input type="text" id="ex-titulo" value="${escH(cat.titulo)}">
   <label>Subtítulo <span class="meta">(ej: mes o validez)</span></label><input type="text" id="ex-sub" value="${escH(cat.subtitulo)}" placeholder="Noviembre 2026">
   <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="ex-pie" rows="3">${escH(cat.pie)}</textarea>
   <div class="check-row"><input type="checkbox" id="ex-grilla" ${cat.grilla!==false?'checked':''}><span class="campo">Mostrar como tabla de tamaño × páginas cuando se pueda <span class="meta">(si no, va como lista)</span></span></div>
-  <button type="button" class="btn p big" id="ex-ver" style="margin-top:10px">Vista previa y exportar</button>`;
+  <p class="meta">No incluye costos ni ganancia. Sale como imagen o PDF.</p>
+  <button type="button" class="btn p big" id="ex-ver">Vista previa y exportar</button>`;
 }
-function wireExportar(){
- const w=document.getElementById('exp-wrap');if(!w)return;
- const refrescar=()=>{w.innerHTML=renderExportar();wireExportar();};
+const CAMPOS_CLI=[['foto','Foto'],['detalle','Tamaño, páginas y tapa dura'],['carac','Características / descripción']];
+const CAMPOS_INT=[['costoIns','Costo de insumos'],['costoTotal','Costo total del producto'],['ganancia','Ganancia'],['stock','Stock'],['insumos','Insumos'],['pasos','Pasos de producción']];
+function renderFormCatalogo(){
+ const c=db.catalogo.cat,int=c.modo==='int';
+ const ck=(k)=>(c.campos[k]!==false);
+ return `<label>Tipo de catálogo</label>
+  <select id="cat-modo"><option value="cli" ${int?'':'selected'}>Para clientes (solo precio de venta)</option><option value="int" ${int?'selected':''}>Mi catálogo (con todos los datos)</option></select>
+  <label>Título</label><input type="text" id="cat-titulo" value="${escH(c.titulo)}">
+  <label>Subtítulo</label><input type="text" id="cat-sub" value="${escH(c.subtitulo)}" placeholder="Colección 2026">
+  <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="cat-pie" rows="2">${escH(c.pie)}</textarea>
+  <div class="check-row"><input type="checkbox" id="cat-portada" ${c.portada?'checked':''}><span class="campo">Incluir portada</span></div>
+  <label>Datos que van en cada producto <span class="meta">(el nombre y el precio de venta siempre salen)</span></label>
+  ${CAMPOS_CLI.concat(int?CAMPOS_INT:[]).map(([k,l])=>`<div class="check-row"><input type="checkbox" data-campo="${k}" ${ck(k)?'checked':''}><span class="campo">${l}</span></div>`).join('')}
+  <p class="meta">Lo que no esté cargado en un producto no aparece. Si falta la foto, queda un recuadro punteado para pegarla después.</p>
+  <button type="button" class="btn p big" id="cat-ver">Generar catálogo (PDF)</button>`;
+}
+function wireListados(){
+ const w=document.getElementById('sel-wrap');if(!w)return;
+ const refrescar=()=>{w.innerHTML=renderSeleccion();wireListados();};
  w.querySelectorAll('[data-ecat]').forEach(el=>el.onclick=()=>{const id=el.dataset.ecat;if(expCatsAbiertas.has(id))expCatsAbiertas.delete(id);else expCatsAbiertas.add(id);refrescar();});
- w.querySelectorAll('[data-ecatchk]').forEach(el=>{el.onclick=(e)=>e.stopPropagation();el.onchange=()=>{db.products.filter(p=>p.categoryId===el.dataset.ecatchk&&p.precioVenta!=null).forEach(p=>{if(el.checked)expExcl.delete(p.id);else expExcl.add(p.id);});refrescar();};});
+ w.querySelectorAll('[data-ecatchk]').forEach(el=>{el.onclick=(e)=>e.stopPropagation();el.onchange=()=>{db.products.filter(p=>p.categoryId===el.dataset.ecatchk).forEach(p=>{if(el.checked)expExcl.delete(p.id);else expExcl.add(p.id);});refrescar();};});
  w.querySelectorAll('[data-eprod]').forEach(el=>el.onchange=()=>{if(el.checked)expExcl.delete(el.dataset.eprod);else expExcl.add(el.dataset.eprod);refrescar();});
- const guardarTextos=()=>{db.catalogo.titulo=w.querySelector('#ex-titulo').value;db.catalogo.subtitulo=w.querySelector('#ex-sub').value;db.catalogo.pie=w.querySelector('#ex-pie').value;db.catalogo.grilla=w.querySelector('#ex-grilla').checked;save();};
- ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla'].forEach(q=>w.querySelector(q).onchange=guardarTextos);
- w.querySelector('#ex-ver').onclick=()=>{guardarTextos();abrirVistaListado();};
+ const f=document.getElementById('lp-form');
+ const guardarLista=()=>{db.catalogo.titulo=f.querySelector('#ex-titulo').value;db.catalogo.subtitulo=f.querySelector('#ex-sub').value;db.catalogo.pie=f.querySelector('#ex-pie').value;db.catalogo.grilla=f.querySelector('#ex-grilla').checked;save();};
+ ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla'].forEach(q=>f.querySelector(q).onchange=guardarLista);
+ f.querySelector('#ex-ver').onclick=()=>{guardarLista();abrirVistaListado();};
+ const g=document.getElementById('cat-form'),c=db.catalogo.cat;
+ const guardarCat=()=>{c.titulo=g.querySelector('#cat-titulo').value;c.subtitulo=g.querySelector('#cat-sub').value;c.pie=g.querySelector('#cat-pie').value;c.portada=g.querySelector('#cat-portada').checked;g.querySelectorAll('[data-campo]').forEach(x=>c.campos[x.dataset.campo]=x.checked);save();};
+ ['#cat-titulo','#cat-sub','#cat-pie','#cat-portada'].forEach(q=>g.querySelector(q).onchange=guardarCat);
+ g.querySelectorAll('[data-campo]').forEach(x=>x.onchange=guardarCat);
+ g.querySelector('#cat-modo').onchange=(e)=>{guardarCat();c.modo=e.target.value;save();g.innerHTML=renderFormCatalogo();wireListados();};
+ g.querySelector('#cat-ver').onclick=()=>{guardarCat();abrirVistaCatalogo();};
+}
+function htmlCatalogo(){
+ const c=db.catalogo.cat,int=c.modo==='int',ck=(k)=>c.campos[k]!==false;
+ const cats=db.categories.map(cat=>({cat,ps:db.products.filter(p=>p.categoryId===cat.id&&!expExcl.has(p.id)&&(int||p.precioVenta!=null))})).filter(x=>x.ps.length);
+ if(!cats.length)return null;
+ const prod=(p)=>{
+  const det=ck('detalle')?[p.tamano,p.paginas?p.paginas+' páginas':'',tapaDura(p)?'Tapa dura':''].filter(Boolean):[];
+  const ci=costoInsumosProd(p),ct=p.costoProduccion;
+  const lin=[];
+  if(int){
+   if(ck('costoIns')&&ci>0)lin.push(`Costo de insumos: <b>${fmt(ci)}</b>`);
+   if(ck('costoTotal')&&ct!=null)lin.push(`Costo total: <b>${fmt(ct)}</b>`);
+   if(ck('ganancia')&&p.precioVenta!=null&&ct!=null)lin.push(`Ganancia: <b>${fmt(p.precioVenta-ct)}</b>${ct>0?` (${Math.round((p.precioVenta-ct)/ct*100)}% sobre el costo)`:''}`);
+   if(ck('stock'))lin.push(`Stock: <b>${p.stockDisponible||0}</b> disponible · ${p.stockReservado||0} reservado`);
+   const ins=(p.insumos||[]).filter(x=>x.on!==false).map(x=>{const i=db.insumos.find(n=>n.id===x.insumoId);return i?`${escH(i.nombre)} ×${x.cantidad}`:'';}).filter(Boolean);
+   if(ck('insumos')&&ins.length)lin.push(`Insumos: ${ins.join(', ')}`);
+   const pasos=(p.pasos||[]).filter(x=>x.on!==false);
+   if(ck('pasos')&&pasos.length)lin.push(`Pasos: ${pasos.map(x=>escH(x.name)+' ('+x.estMin+' min)').join(' → ')}`);
+  }
+  const foto=ck('foto')?(p.foto?`<img class="cat-foto" src="${p.foto}">`:`<div class="cat-ph">Foto</div>`):'';
+  return `<div class="cat-prod">${foto}<div class="cat-datos"><h4>${escH(p.name)}</h4>
+   ${det.length?`<div class="cat-chips">${det.map(d=>`<span>${escH(d)}</span>`).join('')}</div>`:''}
+   ${ck('carac')&&p.caracteristicas?`<div class="cat-carac">${escH(p.caracteristicas).replace(/\n/g,'<br>')}</div>`:''}
+   ${p.precioVenta!=null?`<div class="cat-precio">${fmt(p.precioVenta)}</div>`:''}
+   ${lin.length?`<div class="cat-int">${lin.join('<br>')}</div>`:''}</div></div>`;};
+ const portada=c.portada?`<div class="cat-portada"><h1>${escH(c.titulo)}</h1>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}${int?'<div class="lp-sub">Uso interno</div>':''}</div>`:`<h2>${escH(c.titulo)}</h2>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}`;
+ return `<div class="lp-hoja cat">${portada}${cats.map(x=>`<h3 class="cat-cab">${escH(x.cat.name)}</h3>${x.ps.map(prod).join('')}`).join('')}${c.pie?`<div class="lp-pie">${escH(c.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
+}
+function abrirVistaCatalogo(){
+ const h=htmlCatalogo();if(!h)return avisar('No hay productos seleccionados para el catálogo (para clientes, tienen que tener precio).');
+ const o=document.createElement('div');o.className='overlay';o.id='lp-overlay';
+ o.innerHTML=`<div class="card" style="max-width:640px"><div class="lp-botones" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><button type="button" class="btn p" id="lp-pdf">PDF / imprimir</button><button type="button" class="btn" id="lp-x">Cerrar</button></div>${h}</div>`;
+ document.body.appendChild(o);
+ o.querySelector('#lp-x').onclick=()=>o.remove();
+ o.querySelector('#lp-pdf').onclick=()=>{toast('En el cuadro de impresión elegí "Guardar como PDF"');setTimeout(()=>window.print(),400);};
 }
 function armarListado(){
  const cat=db.catalogo,secs=[];
@@ -672,7 +747,7 @@ function renderProdItem(p){
  <div class="pdet ${abierto?'on':''}" data-d="${p.id}">
  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn" data-edit="${p.id}">Editar</button><button class="btn d" data-del="${p.id}">Eliminar</button></div>
  <details class="sd" open><summary>Características</summary><div>${p.caracteristicas||'<span class="meta">Sin datos</span>'}</div></details>
- <details class="sd"><summary>Precio y costo</summary><div>Venta: <strong>${p.precioVenta!=null?fmt(p.precioVenta):'—'}</strong><br>Costo: <strong>${p.costoProduccion!=null?fmt(p.costoProduccion):'—'}</strong>${ganancia!=null?`<br>${semaforo(p.precioVenta,p.costoProduccion).ico} Ganancia: <strong>${fmt(ganancia)}</strong>${p.costoProduccion>0?` (${Math.round(ganancia/p.costoProduccion*100)}% sobre el costo · ${Math.round(ganancia/p.precioVenta*100)}% del precio)`:''}`:''}</div></details>
+ <details class="sd"><summary>Precio y costo</summary><div>Precio de venta: <strong>${p.precioVenta!=null?fmt(p.precioVenta):'—'}</strong><br>Costo de insumos: <strong>${fmt(costoInsumosProd(p))}</strong><br>Costo total del producto: <strong>${p.costoProduccion!=null?fmt(p.costoProduccion):'—'}</strong>${ganancia!=null?`<br>${semaforo(p.precioVenta,p.costoProduccion).ico} Ganancia: <strong>${fmt(ganancia)}</strong>${p.costoProduccion>0?` (${Math.round(ganancia/p.costoProduccion*100)}% sobre el costo · ${Math.round(ganancia/p.precioVenta*100)}% del precio)`:''}`:''}</div></details>
  <details class="sd"><summary>Pasos</summary><div>${p.pasos.filter(s=>s.on!==false).map(s=>`• ${s.name} — ${s.unit==='lote'?`lote de ${s.loteSize}`:'unidad'} (${s.estMin}min)`).join('<br>')}</div></details>
  <details class="sd"><summary>Stock</summary><div>Disponible ${p.stockDisponible||0} · Reservado ${p.stockReservado||0}</div></details>
  <details class="sd"><summary>Insumos</summary><div>${(p.insumos||[]).length?p.insumos.map(x=>{const i=db.insumos.find(i=>i.id===x.insumoId);return i?`• ${i.nombre} × ${x.cantidad} = ${fmt(i.costo*x.cantidad)}`:'';}).join('<br>'):'<span class="meta">Sin insumos</span>'}</div></details>
