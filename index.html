@@ -30,6 +30,10 @@ h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .lp-hoja td{padding:8px}.lp-hoja tr:nth-child(even) td{background:var(--accentsoft)}.lp-hoja .c{text-align:center}
 .lp-pie{margin-top:18px;text-align:center;color:#6b6158;font-size:13px}
 
+.lp-logo{display:block;margin:0 auto 10px;max-height:70px;max-width:60%;object-fit:contain}
+.cat-lista.c2{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}
+.c2 .cat-prod{flex-direction:column;gap:8px}.c2 .cat-foto,.c2 .cat-ph{flex:none;width:100%;height:150px}.c2 .cat-cols{flex-direction:column;gap:6px}
+.cat-portada .lp-logo{max-height:140px;margin-bottom:24px}
 .cat-portada{text-align:center;padding:60px 0;border-bottom:1px solid #e6ddd3;margin-bottom:10px}.cat-portada h1{color:var(--accent);margin:0;font-size:32px}
 .cat-cab{margin:22px 0 4px;padding-bottom:4px;border-bottom:2px solid var(--accent);color:var(--accent)}
 .cat-prod{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid #eee5db;break-inside:avoid;page-break-inside:avoid}
@@ -39,7 +43,7 @@ h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;margin:0 0 8px}
 .cat-carac{font-size:13.5px;color:#4a4038;margin:2px 0 4px}.cat-precio{font-size:20px;font-weight:800;color:var(--accent)}.cat-cols{display:flex;gap:16px;margin-top:6px;font-size:12.5px;color:#4a4038;border-top:1px dashed #d9cfc3;padding-top:5px}.cat-cols>div{flex:1;min-width:0}.cat-cols ul{margin:2px 0 0;padding-left:16px}.cat-cols li{margin-bottom:1px}
 .cat-int{font-size:12.5px;color:#4a4038;margin-top:6px;line-height:1.5;border-top:1px dashed #d9cfc3;padding-top:5px}
 @page{size:A4;margin:12mm}
-@media print{html,body{background:#fff!important;display:block!important;padding:0!important;margin:0!important;min-height:0!important}#lp-overlay .card{width:100%!important}.cat-portada{min-height:240mm;display:flex;flex-direction:column;justify-content:center;break-after:page;page-break-after:always;border:none}.cat-cab{break-after:avoid;page-break-after:avoid}.cat-foto,.cat-ph{flex-basis:150px;width:150px;height:150px}body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{.c2 .cat-foto,.c2 .cat-ph{flex:none!important;width:100%!important;height:55mm!important}html,body{background:#fff!important;display:block!important;padding:0!important;margin:0!important;min-height:0!important}#lp-overlay .card{width:100%!important}.cat-portada{min-height:240mm;display:flex;flex-direction:column;justify-content:center;break-after:page;page-break-after:always;border:none}.cat-cab{break-after:avoid;page-break-after:avoid}.cat-foto,.cat-ph{flex-basis:150px;width:150px;height:150px}body>*:not(#lp-overlay){display:none!important}#lp-overlay{position:static!important;background:none!important;display:block!important;padding:0!important}#lp-overlay .lp-botones{display:none!important}#lp-overlay .card{max-width:none!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;padding:0!important}.lp-hoja{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(min-width:760px){body{padding:24px 0}.shell{border-radius:24px;border:1px solid var(--border);overflow:hidden;box-shadow:0 0 50px rgba(46,36,29,.1)}}
 header{position:sticky;top:0;z-index:10;background:var(--bg);padding:16px 18px 0;border-bottom:1px solid var(--border)}
 header h1{font-size:20px;background:linear-gradient(90deg,var(--accent),#c1584b);-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block}
@@ -135,7 +139,8 @@ ordenes:[],ventas:[],gastos:[],
 gastoCategorias:['Insumo','Herramienta','Máquina','Otro'],
 historial:[{id:uid(),tipo:'ajuste',desc:'Carga inicial de stock de ejemplo',fecha:hoy()}],
 notas:[],
-catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true,cat:{modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{}}},
+catalogo:{titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true,cat:{modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{},cols:1},logo:null,mostrarLogo:true},
+listadosGuardados:[],
 config:{titulo:'Mi Taller',icono:'📖',tema:'clasico',gifs:{completo:null,venta:null,orden:null}},
 costos:{luz:0,manoObra:0,otros:0,merma:10,incLuz:false,incManoObra:false,incOtros:false,diasMes:24,horasDia:5}
 };}
@@ -167,6 +172,8 @@ function migrar(d){
  if(d.costos&&d.costos.merma==null)d.costos.merma=10;
  if(!d.catalogo)d.catalogo={titulo:'Listado de precios',subtitulo:'',pie:'',grilla:true};
  if(!d.catalogo.cat)d.catalogo.cat={modo:'cli',titulo:'Catálogo',subtitulo:'',pie:'',portada:true,campos:{}};
+ if(d.catalogo.cat.cols==null)d.catalogo.cat.cols=1;if(d.catalogo.logo===undefined)d.catalogo.logo=null;if(d.catalogo.mostrarLogo==null)d.catalogo.mostrarLogo=true;
+ if(!Array.isArray(d.listadosGuardados))d.listadosGuardados=[];
  (d.products||[]).forEach(pr=>{if(pr.usaMerma==null)pr.usaMerma=false;});
  (d.ordenes||[]).forEach(o=>{
   (o.items||[]).forEach(it=>{
@@ -188,6 +195,7 @@ const IDB={db:null,cache:{},
  clear(){IDB.cache={};if(!IDB.db)return;try{IDB.db.transaction('img','readwrite').objectStore('img').clear();}catch(e){}}
 };
 function comprimirImagen(file,max=700,q=0.78){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q));};im.src=r.result;};r.readAsDataURL(file);});}
+function comprimirLogo(file,max=600){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/png'));};im.src=r.result;};r.readAsDataURL(file);});}
 function confirmar(msg,si='Sí',no='Cancelar'){return new Promise(res=>{const o=document.createElement('div');o.className='overlay';o.style.zIndex=90;
  o.innerHTML=`<div class="card" style="max-width:340px"><p style="margin-top:0">${msg}</p><div style="display:flex;gap:8px"><button type="button" class="btn p" id="cf-si" style="flex:1">${si}</button>${no?`<button type="button" class="btn" id="cf-no" style="flex:1">${no}</button>`:''}</div></div>`;
  document.body.appendChild(o);o.querySelector('#cf-si').onclick=()=>{o.remove();res(true);};const n=o.querySelector('#cf-no');if(n)n.onclick=()=>{o.remove();res(false);};});}
@@ -557,21 +565,36 @@ function tapaDura(p){if(p.tapa==='si')return true;if(p.tapa==='no')return false;
 function costoInsumosProd(p){return(p.insumos||[]).filter(x=>x.on!==false).reduce((a,x)=>a+(x.cantidad||0)*((db.insumos.find(i=>i.id===x.insumoId)||{}).costo||0),0);}
 function renderListados(){
  const m=document.getElementById('main');
- m.innerHTML=`<h3 class="sect">1. ¿Qué incluir?</h3><div class="card" id="sel-wrap">${renderSeleccion()}</div>
+ m.innerHTML=`<h3 class="sect">Listados guardados</h3><div class="card" id="gd-wrap">${renderGuardados()}</div>
+ <h3 class="sect">Logo</h3><div class="card" id="logo-wrap">${renderLogoForm()}</div>
+ <h3 class="sect">1. ¿Qué incluir?</h3><div class="card" id="sel-wrap">${renderSeleccion()}</div>
  <h3 class="sect">2. Lista de precios <span class="meta">(para clientes)</span></h3><div class="card" id="lp-form">${renderFormLista()}</div>
  <h3 class="sect">3. Catálogo con fotos <span class="meta">(PDF)</span></h3><div class="card" id="cat-form">${renderFormCatalogo()}</div>`;
  wireListados();
+}
+function renderLogoForm(){
+ const c=db.catalogo;
+ return `<p class="meta">Se muestra arriba en la lista de precios y en la portada del catálogo (o en el encabezado si no hay portada).</p>
+  ${c.logo?`<div class="fila"><img src="${c.logo}" style="max-height:60px;max-width:200px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:4px"><button type="button" class="btn d" id="logo-quitar">✕ Quitar logo</button></div>`:''}
+  <input type="file" id="logo-file" accept="image/*">
+  <div class="check-row" style="margin-top:6px"><input type="checkbox" id="logo-mostrar" ${c.mostrarLogo!==false?'checked':''}><span class="campo">Mostrar el logo en lo que exporto</span></div>`;
+}
+function renderGuardados(){
+ const l=db.listadosGuardados;
+ return `<p class="meta">Guardá lo que armaste (categorías y productos elegidos, textos y opciones) para abrirlo después con un toque.</p>
+  ${l.map(x=>`<div class="row"><b style="flex:1">${escH(x.nombre)}</b><button type="button" class="btn" data-gabrir="${x.id}">Abrir</button><button type="button" class="link" data-gdel="${x.id}" title="Borrar">✕</button></div>`).join('')||'<div class="meta">Todavía no guardaste ninguno.</div>'}
+  <form id="gd-form" class="fila" style="margin-top:8px"><input type="text" id="gd-nombre" placeholder="Nombre (ej: Fotolibros clientes)" required style="flex:1"><button class="btn p">Guardar lo actual</button></form>`;
 }
 function renderSeleccion(){
  const grupos=db.categories.map(c=>{
   const ps=db.products.filter(p=>p.categoryId===c.id);if(!ps.length)return '';
   const todos=ps.every(p=>!expExcl.has(p.id));const ab=expCatsAbiertas.has(c.id);
   return `<div class="catgrp"><div class="cathd ${ab?'':'cl'}" data-ecat="${c.id}"><span class="chev">▾</span>
-   <input type="checkbox" data-ecatchk="${c.id}" ${todos?'checked':''}> ${escH(c.emoji||'')} ${escH(c.name)} <span class="meta">(${ps.filter(p=>!expExcl.has(p.id)).length}/${ps.length})</span></div>
+   <input type="checkbox" data-ecatchk="${c.id}" ${todos?'checked':''}> ${escH(c.emoji||'')} ${escH(c.name)} <span class="meta">(${ps.filter(p=>!expExcl.has(p.id)).length}/${ps.length})</span><span style="flex:1"></span><button type="button" class="link" data-cup="${c.id}" title="Subir categoría">▲</button><button type="button" class="link" data-cdn="${c.id}" title="Bajar categoría">▼</button></div>
    <div style="display:${ab?'':'none'};padding-left:22px">
-   ${ps.map(p=>`<div class="check-row"><input type="checkbox" data-eprod="${p.id}" ${expExcl.has(p.id)?'':'checked'}><span class="campo">${escH(p.name)} <span class="meta">${[p.tamano,p.paginas?p.paginas+' págs':'',p.precioVenta!=null?fmt(p.precioVenta):'sin precio'].filter(Boolean).join(' · ')}</span></span></div>`).join('')}
+   ${ps.map(p=>`<div class="check-row"><input type="checkbox" data-eprod="${p.id}" ${expExcl.has(p.id)?'':'checked'}><span class="campo">${escH(p.name)} <span class="meta">${[p.tamano,p.paginas?p.paginas+' págs':'',p.precioVenta!=null?fmt(p.precioVenta):'sin precio'].filter(Boolean).join(' · ')}</span></span><button type="button" class="link" data-pup2="${p.id}" title="Subir">▲</button><button type="button" class="link" data-pdn2="${p.id}" title="Bajar">▼</button></div>`).join('')}
    </div></div>`;}).join('');
- return `<p class="meta">Tildá las categorías o productos que van a salir (tocá una categoría para ver sus productos). Los productos sin precio no salen en lo que es para clientes. Siempre se usan los datos actuales: si cambiás algo, volvé a exportar.</p>${grupos||'<div class="empty">Todavía no hay productos</div>'}`;
+ return `<p class="meta">Tildá las categorías o productos que van a salir (tocá una categoría para ver sus productos). Con ▲▼ cambiás el orden en que salen; ese orden también se ve en el catálogo de Productos. Los productos sin precio no salen en lo que es para clientes. Siempre se usan los datos actuales: si cambiás algo, volvé a exportar.</p>${grupos||'<div class="empty">Todavía no hay productos</div>'}`;
 }
 function renderFormLista(){
  const cat=db.catalogo;
@@ -593,24 +616,45 @@ function renderFormCatalogo(){
   <label>Subtítulo</label><input type="text" id="cat-sub" value="${escH(c.subtitulo)}" placeholder="Colección 2026">
   <label>Texto al pie <span class="meta">(entrega, pago, contacto)</span></label><textarea id="cat-pie" rows="2">${escH(c.pie)}</textarea>
   <div class="check-row"><input type="checkbox" id="cat-portada" ${c.portada?'checked':''}><span class="campo">Incluir portada</span></div>
+  <label>Productos por fila</label><select id="cat-cols"><option value="1" ${c.cols===2?'':'selected'}>1 por fila (foto al costado, más detalle)</option><option value="2" ${c.cols===2?'selected':''}>2 por fila (más compacto, menos hojas)</option></select>
   <label>Datos que van en cada producto <span class="meta">(el nombre y el precio de venta siempre salen)</span></label>
   ${CAMPOS_CLI.concat(int?CAMPOS_INT:[]).map(([k,l])=>`<div class="check-row"><input type="checkbox" data-campo="${k}" ${ck(k)?'checked':''}><span class="campo">${l}</span></div>`).join('')}
   <p class="meta">Lo que no esté cargado en un producto no aparece. Si falta la foto, queda un recuadro punteado para pegarla después.</p>
   <button type="button" class="btn p big" id="cat-ver">Generar catálogo (PDF)</button>`;
 }
+let guardarTextosActuales=()=>{};
 function wireListados(){
  const w=document.getElementById('sel-wrap');if(!w)return;
  const refrescar=()=>{w.innerHTML=renderSeleccion();wireListados();};
  w.querySelectorAll('[data-ecat]').forEach(el=>el.onclick=()=>{const id=el.dataset.ecat;if(expCatsAbiertas.has(id))expCatsAbiertas.delete(id);else expCatsAbiertas.add(id);refrescar();});
  w.querySelectorAll('[data-ecatchk]').forEach(el=>{el.onclick=(e)=>e.stopPropagation();el.onchange=()=>{db.products.filter(p=>p.categoryId===el.dataset.ecatchk).forEach(p=>{if(el.checked)expExcl.delete(p.id);else expExcl.add(p.id);});refrescar();};});
+ w.querySelectorAll('[data-cup],[data-cdn]').forEach(el=>{el.onclick=(e)=>{e.stopPropagation();moverCat(db.categories,el.dataset.cup||el.dataset.cdn,el.dataset.cup?-1:1);save();refrescar();};});
+ w.querySelectorAll('[data-pup2],[data-pdn2]').forEach(el=>{el.onclick=()=>{const id=el.dataset.pup2||el.dataset.pdn2,dir=el.dataset.pup2?-1:1;const p=db.products.find(x=>x.id===id);const mismos=db.products.filter(x=>x.categoryId===p.categoryId);const i=mismos.indexOf(p),j=i+dir;if(j<0||j>=mismos.length)return;const a=db.products.indexOf(mismos[i]),b=db.products.indexOf(mismos[j]);[db.products[a],db.products[b]]=[db.products[b],db.products[a]];save();refrescar();};});
  w.querySelectorAll('[data-eprod]').forEach(el=>el.onchange=()=>{if(el.checked)expExcl.delete(el.dataset.eprod);else expExcl.add(el.dataset.eprod);refrescar();});
+ const lw=document.getElementById('logo-wrap');
+ const refLogo=()=>{lw.innerHTML=renderLogoForm();wireListados();};
+ lw.querySelector('#logo-file').onchange=async(e)=>{const f=e.target.files[0];if(!f)return;try{db.catalogo.logo=await comprimirLogo(f);if(save())toast('Logo guardado');refLogo();}catch(x){toast('No se pudo leer esa imagen');}};
+ const lq=lw.querySelector('#logo-quitar');if(lq)lq.onclick=()=>{db.catalogo.logo=null;save();refLogo();};
+ lw.querySelector('#logo-mostrar').onchange=(e)=>{db.catalogo.mostrarLogo=e.target.checked;save();};
+ const gw=document.getElementById('gd-wrap');
+ const refG=()=>{gw.innerHTML=renderGuardados();wireListados();};
+ gw.querySelector('#gd-form').onsubmit=(e)=>{e.preventDefault();const nombre=gw.querySelector('#gd-nombre').value.trim();if(!nombre)return;
+  guardarTextosActuales();
+  const copia={id:uid(),nombre,excl:[...expExcl],lista:{titulo:db.catalogo.titulo,subtitulo:db.catalogo.subtitulo,pie:db.catalogo.pie,grilla:db.catalogo.grilla},cat:JSON.parse(JSON.stringify(db.catalogo.cat))};
+  const ex=db.listadosGuardados.findIndex(x=>x.nombre.toLowerCase()===nombre.toLowerCase());
+  if(ex>=0)db.listadosGuardados[ex]={...copia,id:db.listadosGuardados[ex].id};else db.listadosGuardados.push(copia);
+  save();toast('Listado guardado');refG();};
+ gw.querySelectorAll('[data-gabrir]').forEach(el=>el.onclick=()=>{const x=db.listadosGuardados.find(g=>g.id===el.dataset.gabrir);if(!x)return;
+  expExcl=new Set(x.excl.filter(id=>db.products.some(p=>p.id===id)));Object.assign(db.catalogo,x.lista);db.catalogo.cat=JSON.parse(JSON.stringify(x.cat));save();toast('Listado abierto');renderListados();});
+ gw.querySelectorAll('[data-gdel]').forEach(el=>el.onclick=async()=>{if(await confirmar('¿Borrar este listado guardado?')){db.listadosGuardados=db.listadosGuardados.filter(g=>g.id!==el.dataset.gdel);save();refG();}});
  const f=document.getElementById('lp-form');
  const guardarLista=()=>{db.catalogo.titulo=f.querySelector('#ex-titulo').value;db.catalogo.subtitulo=f.querySelector('#ex-sub').value;db.catalogo.pie=f.querySelector('#ex-pie').value;db.catalogo.grilla=f.querySelector('#ex-grilla').checked;save();};
  ['#ex-titulo','#ex-sub','#ex-pie','#ex-grilla'].forEach(q=>f.querySelector(q).onchange=guardarLista);
  f.querySelector('#ex-ver').onclick=()=>{guardarLista();abrirVistaListado();};
  const g=document.getElementById('cat-form'),c=db.catalogo.cat;
- const guardarCat=()=>{c.titulo=g.querySelector('#cat-titulo').value;c.subtitulo=g.querySelector('#cat-sub').value;c.pie=g.querySelector('#cat-pie').value;c.portada=g.querySelector('#cat-portada').checked;g.querySelectorAll('[data-campo]').forEach(x=>c.campos[x.dataset.campo]=x.checked);save();};
- ['#cat-titulo','#cat-sub','#cat-pie','#cat-portada'].forEach(q=>g.querySelector(q).onchange=guardarCat);
+ guardarTextosActuales=()=>{guardarLista();guardarCat();};
+ const guardarCat=()=>{c.titulo=g.querySelector('#cat-titulo').value;c.subtitulo=g.querySelector('#cat-sub').value;c.pie=g.querySelector('#cat-pie').value;c.portada=g.querySelector('#cat-portada').checked;c.cols=Number(g.querySelector('#cat-cols').value)||1;g.querySelectorAll('[data-campo]').forEach(x=>c.campos[x.dataset.campo]=x.checked);save();};
+ ['#cat-titulo','#cat-sub','#cat-pie','#cat-portada','#cat-cols'].forEach(q=>g.querySelector(q).onchange=guardarCat);
  g.querySelectorAll('[data-campo]').forEach(x=>x.onchange=guardarCat);
  g.querySelector('#cat-modo').onchange=(e)=>{guardarCat();c.modo=e.target.value;save();g.innerHTML=renderFormCatalogo();wireListados();};
  g.querySelector('#cat-ver').onclick=()=>{guardarCat();abrirVistaCatalogo();};
@@ -642,8 +686,9 @@ function htmlCatalogo(){
    ${ck('carac')&&p.caracteristicas?`<div class="cat-carac">${escH(p.caracteristicas).replace(/\n/g,'<br>')}</div>`:''}
    ${p.precioVenta!=null?`<div class="cat-precio">${fmt(p.precioVenta)}</div>`:''}
    ${lin.length?`<div class="cat-int">${lin.join('<br>')}</div>`:''}${columnas}</div></div>`;};
- const portada=c.portada?`<div class="cat-portada"><h1>${escH(c.titulo)}</h1>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}${int?'<div class="lp-sub">Uso interno</div>':''}</div>`:`<h2>${escH(c.titulo)}</h2>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}`;
- return `<div class="lp-hoja cat">${portada}${cats.map(x=>`<h3 class="cat-cab">${escH(x.cat.name)}</h3>${x.ps.map(prod).join('')}`).join('')}${c.pie?`<div class="lp-pie">${escH(c.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
+ const logo=(db.catalogo.logo&&db.catalogo.mostrarLogo!==false)?`<img class="lp-logo" src="${db.catalogo.logo}">`:'';
+ const portada=c.portada?`<div class="cat-portada">${logo}<h1>${escH(c.titulo)}</h1>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}${int?'<div class="lp-sub">Uso interno</div>':''}</div>`:`${logo}<h2>${escH(c.titulo)}</h2>${c.subtitulo?`<div class="lp-sub">${escH(c.subtitulo)}</div>`:''}`;
+ return `<div class="lp-hoja cat">${portada}${cats.map(x=>`<h3 class="cat-cab">${escH(x.cat.name)}</h3><div class="cat-lista ${c.cols===2?'c2':''}">${x.ps.map(prod).join('')}</div>`).join('')}${c.pie?`<div class="lp-pie">${escH(c.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
 }
 function abrirVistaCatalogo(){
  const h=htmlCatalogo();if(!h)return avisar('No hay productos seleccionados para el catálogo (para clientes, tienen que tener precio).');
@@ -674,11 +719,12 @@ function armarListado(){
 }
 function htmlListado(secs){
  const cat=db.catalogo;
- return `<div class="lp-hoja"><h2>${escH(cat.titulo)}</h2>${cat.subtitulo?`<div class="lp-sub">${escH(cat.subtitulo)}</div>`:''}
+ const logo=(cat.logo&&cat.mostrarLogo!==false)?`<img class="lp-logo" src="${cat.logo}">`:'';
+ return `<div class="lp-hoja">${logo}<h2>${escH(cat.titulo)}</h2>${cat.subtitulo?`<div class="lp-sub">${escH(cat.subtitulo)}</div>`:''}
  ${secs.map(sc=>`<h3>${escH(sc.titulo)}${sc.nota?` <span>· ${escH(sc.nota)}</span>`:''}</h3><table><thead><tr>${sc.head.map((h,i)=>`<th class="${i?'c':''}">${escH(h)}</th>`).join('')}</tr></thead><tbody>${sc.rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${i?'c':''}">${escH(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`).join('')}
  ${cat.pie?`<div class="lp-pie">${escH(cat.pie).replace(/\n/g,'<br>')}</div>`:''}</div>`;
 }
-function canvasListado(secs){
+function canvasListado(secs,logoImg){
  const cat=db.catalogo,cs=getComputedStyle(document.body);
  const acc=cs.getPropertyValue('--accent').trim()||'#d97757',soft=cs.getPropertyValue('--accentsoft').trim()||'#f3ded2',mut='#6b6158',txt='#2e241d';
  const W=1200,P=60,F='Nunito, Quicksand, Arial, sans-serif';
@@ -686,6 +732,7 @@ function canvasListado(secs){
  const wrap=(c,t,font,maxW)=>{c.font=font;const out=[];String(t).split('\n').forEach(par=>{let l='';par.split(' ').forEach(w=>{const test=l?l+' '+w:w;if(c.measureText(test).width>maxW&&l){out.push(l);l=w;}else l=test;});out.push(l);});return out;};
  const dibujar=(c,real)=>{
   let y=P;
+  if(logoImg){const k=Math.min(420/logoImg.width,120/logoImg.height,1.5);const lw=logoImg.width*k,lh=logoImg.height*k;if(real)c.drawImage(logoImg,(W-lw)/2,y,lw,lh);y+=lh+24;}
   c.textAlign='center';c.fillStyle=acc;c.font='bold 52px '+F;
   wrap(medir,cat.titulo,'bold 52px '+F,W-2*P).forEach(l=>{y+=52;if(real)c.fillText(l,W/2,y);y+=8;});
   if(cat.subtitulo){c.fillStyle=mut;c.font='28px '+F;y+=14;y+=28;if(real)c.fillText(cat.subtitulo,W/2,y);}
@@ -729,7 +776,7 @@ function abrirVistaListado(){
  o.querySelector('#lp-x').onclick=()=>o.remove();
  o.querySelector('#lp-pdf').onclick=()=>{toast('En el cuadro de impresión elegí "Guardar como PDF"');setTimeout(()=>window.print(),400);};
  const nombre='lista-de-precios-'+hoy()+'.png';
- const obtener=()=>new Promise(res=>canvasListado(secs).toBlob(b=>res(b),'image/png'));
+ const obtener=()=>new Promise(res=>{const fin=(im)=>canvasListado(secs,im).toBlob(b=>res(b),'image/png');if(db.catalogo.logo&&db.catalogo.mostrarLogo!==false){const im=new Image();im.onload=()=>fin(im);im.onerror=()=>fin(null);im.src=db.catalogo.logo;}else fin(null);});
  o.querySelector('#lp-png').onclick=async()=>{const b=await obtener();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);toast('Imagen descargada');};
  try{const probe=new File([new Blob(['x'])],'x.png',{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[probe]})){const sb=o.querySelector('#lp-share');sb.style.display='';sb.onclick=async()=>{const b=await obtener();try{await navigator.share({files:[new File([b],nombre,{type:'image/png'})],title:db.catalogo.titulo});}catch(e){}};}}catch(e){}
 }
